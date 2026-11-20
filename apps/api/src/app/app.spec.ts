@@ -1,25 +1,18 @@
-import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { AppModule } from './app.module';
-import { configureApp } from './configure-app';
+import { TestApp, startTestApp, testConfig } from '../testing/test-app';
 
 describe('api', () => {
-  let app: INestApplication;
-  let baseUrl: string;
+  let api: TestApp;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = configureApp(moduleRef.createNestApplication({ logger: false }));
-    await app.listen(0, '127.0.0.1');
-    baseUrl = await app.getUrl();
+    api = await startTestApp(testConfig());
   });
 
   afterAll(async () => {
-    await app.close();
+    await api.app.close();
   });
 
   it('answers GET /api/ping', async () => {
-    const response = await fetch(`${baseUrl}/api/ping`);
+    const response = await fetch(`${api.baseUrl}/api/ping`);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ message: 'pong' });
