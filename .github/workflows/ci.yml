@@ -19,7 +19,7 @@ concurrency:
 env:
   CI: 'true'
   NX_DAEMON: 'false'
-  NX_NO_CLOUD: 'true'
+  # Empty on push; only the pull_request steps read it.
   NX_BASE: ${{ github.event.pull_request.base.sha }}
   NX_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.NX_HEAD }}
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.NX_HEAD }}
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -74,9 +74,9 @@ jobs:
       - run: npm ci
       - name: Run affected PR checks
         if: github.event_name == 'pull_request'
-        run: npm exec nx -- affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD"
+        run: npm exec --no -- nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD"
       - name: Run full main checks
         if: github.event_name == 'push'
-        run: npm exec nx -- run-many -t lint test build
+        run: npm exec --no -- nx run-many -t lint test build
 
   # The e2e job (15) goes here as a sibling of `quality`.
