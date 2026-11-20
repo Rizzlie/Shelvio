@@ -68,7 +68,8 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "~7.8.0"
+    "rxjs": "~7.8.0",
+    "zod": "4.6.7"
   },
   "overrides": {
     "@angular-devkit/architect": "0.2202.8"
