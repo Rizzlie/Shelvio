@@ -1,0 +1,7 @@
+/dist
+/coverage
+/.nx
+/.angular
+/.scratch
+/.idea
+package-lock.json

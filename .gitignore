@@ -2,3 +2,29 @@
 .env
 .env.*
 !.env.example
+
+# Dependencies and build/test output
+node_modules
+dist
+tmp
+out-tsc
+coverage
+.angular
+.vitest
+vitest.config.*.timestamp*
+
+# Nx
+.nx/cache
+.nx/workspace-data
+.nx/polygraph
+.nx/self-healing
+.nx/migrate-runs
+
+# IDE-local state
+.idea/workspace.xml
+.claude/settings.local.json
+.claude/worktrees
+
+# System files
+.DS_Store
+Thumbs.db
