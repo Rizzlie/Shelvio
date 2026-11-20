@@ -17,7 +17,9 @@ function loadConfig(): Config {
 
 async function bootstrap() {
   const config = loadConfig();
-  const app = configureApp(await NestFactory.create(AppModule.register(config)));
+  const app = configureApp(
+    await NestFactory.create(AppModule.register(config), { bufferLogs: true }),
+  );
   await app.listen(config.PORT);
   // Set when Nx waits for this server to be ready
   if (process.env['NX_READY_SIGNAL_SOCKET']) {
