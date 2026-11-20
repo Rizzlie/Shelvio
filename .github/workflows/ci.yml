@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    # `edited` re-runs the checks when the PR title changes.
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# CI needs no application secrets: nothing below reads `secrets.*`.
+env:
+  CI: 'true'
+  NX_DAEMON: 'false'
+  # Empty on push; only the pull_request steps read it.
+  NX_BASE: ${{ github.event.pull_request.base.sha }}
+  NX_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  conventions:
+    name: Commit and PR conventions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ env.NX_HEAD }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          test -n "$PR_TITLE"
+          printf '%s\n' "$PR_TITLE" | npm exec --no -- commitlint --config commitlint.pr.config.cjs --strict --verbose
+      - name: Validate PR commits
+        if: github.event_name == 'pull_request'
+        run: |
+          merge_base=$(git merge-base "$NX_BASE" "$NX_HEAD")
+          npm exec --no -- commitlint --from "$merge_base" --to "$NX_HEAD" --strict --verbose
+      - name: Validate latest main commit
+        if: github.event_name == 'push'
+        run: npm exec --no -- commitlint --last --strict --verbose
+
+  # Later tickets add steps here before the Nx checks:
+  # the ungenerated-migration check (04) and the translation-key check (06).
+  quality:
+    name: Lint, unit tests and production builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ env.NX_HEAD }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Run affected PR checks
+        if: github.event_name == 'pull_request'
+        run: npm exec --no -- nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD"
+      - name: Run full main checks
+        if: github.event_name == 'push'
+        run: npm exec --no -- nx run-many -t lint test build
+
+  # The e2e job (15) goes here as a sibling of `quality`.
