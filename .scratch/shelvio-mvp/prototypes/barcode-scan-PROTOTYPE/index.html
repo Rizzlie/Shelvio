@@ -1,0 +1,217 @@
+<!doctype html>
+<!-- PROTOTYPE — throwaway. Ticket 12 (Barcode scan prototype). Not production code. -->
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYP skanera</title>
+<style>
+  :root { color-scheme: light dark; --b: #8884; --hi: #c96; }
+  body { font: 15px/1.4 system-ui, sans-serif; margin: 0; padding: 12px; max-width: 720px; margin-inline: auto; }
+  .banner { background: #b33; color: #fff; padding: 4px 8px; font-size: 12px; border-radius: 4px; }
+  #wrap { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3; margin: 8px 0; }
+  video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #guide { position: absolute; left: 10%; right: 10%; top: 38%; height: 24%; border: 2px solid #fff8; border-radius: 6px; pointer-events: none; }
+  #wrap.ok #guide { border-color: #4c4; }
+  button, input, select { font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--b); }
+  button { cursor: pointer; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .muted { opacity: .7; font-size: 13px; }
+  .cand { display: flex; gap: 10px; border: 1px solid var(--b); border-radius: 6px; padding: 8px; margin: 6px 0; cursor: pointer; }
+  .cand.sel { outline: 3px solid var(--hi); }
+  .cand img { width: 64px; height: 64px; object-fit: cover; }
+  table { border-collapse: collapse; font-size: 13px; }
+  td { padding: 2px 8px 2px 0; }
+  pre { font-size: 11px; white-space: pre-wrap; background: #8881; padding: 6px; border-radius: 4px; }
+  .big { font-size: 22px; font-weight: 600; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="banner">PROTOTYP — do wyrzucenia. Mierzy szybkość i niezawodność skanowania.</div>
+<div class="muted" id="engine">Ładowanie silnika…</div>
+
+<div id="wrap"><video id="v" playsinline muted autoplay></video><div id="guide"></div></div>
+<div class="row">
+  <button id="start">▶ Skanuj</button>
+  <button id="stop">■ Stop</button>
+  <label class="muted"><input type="checkbox" id="torch"> latarka</label>
+  <label class="muted">Zdjęcie: <input type="file" id="photo" accept="image/*" capture="environment"></label>
+</div>
+<div class="row">
+  <input id="manual" inputmode="numeric" placeholder="Wpisz kod (ISBN / EAN / UPC)" size="22">
+  <button id="go">Szukaj</button>
+</div>
+<div id="status" class="muted">Trzymaj kod ok. 15–20 cm od aparatu.</div>
+
+<div id="result"></div>
+
+<h3>Ocena tego skanu</h3>
+<div class="row">
+  <button data-rate="szybko">👍 Szybko i bez problemu</button>
+  <button data-rate="dało się">😐 Dało się</button>
+  <button data-rate="słabo">👎 Słabo</button>
+</div>
+<div class="row"><input id="note" placeholder="Uwagi (np. musiałem przybliżać, złe wydanie)" style="flex:1"></div>
+<div class="muted" id="logged"></div>
+
+<h3>Sesja</h3>
+<table id="session"></table>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+const base = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+const FORMATS = ['ean_13', 'upc_a', 'ean_8', 'upc_e'];
+const forceWasm = new URLSearchParams(location.search).get('engine') === 'wasm';
+
+// ----- engine: native BarcodeDetector if it supports ean_13, else ZXing WASM ponyfill -----
+let Detector, engineName;
+const t0Load = performance.now();
+if (!forceWasm && 'BarcodeDetector' in window && (await BarcodeDetector.getSupportedFormats().catch(() => [])).includes('ean_13')) {
+  Detector = window.BarcodeDetector; engineName = 'natywny BarcodeDetector';
+} else {
+  ({ BarcodeDetector: Detector } = await import('https://cdn.jsdelivr.net/npm/barcode-detector@3.2.4/dist/es/ponyfill.js/+esm'));
+  engineName = 'ZXing WASM (barcode-detector 3.2.4)';
+}
+const detector = new Detector({ formats: FORMATS });
+// Warm up (WASM downloads ~1 MB on first detect).
+const c = new OffscreenCanvas(8, 8); await detector.detect(c).catch(() => {});
+const loadMs = Math.round(performance.now() - t0Load);
+$('engine').textContent = `Silnik: ${engineName} · gotowy w ${loadMs} ms · ${navigator.userAgent.match(/\(([^)]+)\)/)?.[1] || ''}`
+  + (forceWasm ? ' · wymuszony WASM' : ' · (?engine=wasm wymusza WASM)');
+
+// ----- validation and classification -----
+function checksumOk(code) {
+  if (!/^\d+$/.test(code) || ![8, 12, 13].includes(code.length)) return false;
+  const d = code.padStart(13, '0').split('').map(Number);
+  const sum = d.slice(0, 12).reduce((s, x, i) => s + x * (i % 2 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === d[12];
+}
+function classify(code) {
+  if (code.length === 13 && (code.startsWith('978') || (code.startsWith('979') && !code.startsWith('9790')))) return 'book';
+  return 'vinyl'; // generic GTIN (UPC-A / other EAN) → vinyl lookup
+}
+
+// ----- camera + detect loop -----
+let stream, running = false, last = null, streak = 0, tCamReady = 0, frames = 0;
+let current = null; // current scan record
+const session = [];
+
+async function start() {
+  stop();
+  $('result').innerHTML = ''; $('wrap').classList.remove('ok');
+  const tAsk = performance.now();
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
+  });
+  $('v').srcObject = stream; await $('v').play();
+  tCamReady = performance.now();
+  const s = stream.getVideoTracks()[0].getSettings();
+  $('status').textContent = `Kamera ${s.width}×${s.height} w ${Math.round(tCamReady - tAsk)} ms. Szukam kodu…`;
+  running = true; last = null; streak = 0; frames = 0;
+  loop();
+}
+function stop() {
+  running = false;
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+}
+async function loop() {
+  if (!running) return;
+  frames++;
+  try {
+    const codes = await detector.detect($('v'));
+    const code = codes.map((x) => x.rawValue).find(checksumOk);
+    if (code) {
+      streak = code === last ? streak + 1 : 1; last = code;
+      if (streak >= 2) { // confirmed on two consecutive frames
+        const detectMs = Math.round(performance.now() - tCamReady);
+        navigator.vibrate?.(80);
+        $('wrap').classList.add('ok');
+        stop();
+        return lookup(code, { via: 'kamera', detectMs, frames, format: codes[0].format });
+      }
+    }
+  } catch {}
+  requestAnimationFrame(loop);
+}
+
+$('torch').onchange = async (e) => {
+  try { await stream?.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: e.target.checked }] }); }
+  catch { $('status').textContent = 'Latarka nieobsługiwana.'; }
+};
+$('photo').onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const t = performance.now();
+  const bmp = await createImageBitmap(f);
+  const codes = await detector.detect(bmp);
+  const code = codes.map((x) => x.rawValue).find(checksumOk);
+  if (!code) { $('status').textContent = `Nie odczytano kodu ze zdjęcia (${Math.round(performance.now() - t)} ms).`; return; }
+  lookup(code, { via: 'zdjęcie', detectMs: Math.round(performance.now() - t), format: codes[0].format });
+};
+$('go').onclick = () => {
+  const code = $('manual').value.replace(/[^0-9Xx]/g, '');
+  if (!checksumOk(code)) { $('status').textContent = 'Zła suma kontrolna.'; return; }
+  lookup(code, { via: 'ręcznie' });
+};
+$('start').onclick = () => start().catch((e) => ($('status').textContent = 'Kamera: ' + e.message));
+$('stop').onclick = stop;
+
+// ----- lookup -----
+async function lookup(raw, meta) {
+  const code = raw.length === 12 ? raw : raw; // UPC-A kept as-is
+  const kind = classify(code);
+  current = { code, kind, ...meta, tFound: performance.now() };
+  $('status').innerHTML = `<span class="big">${code}</span> · ${kind === 'book' ? 'książka (ISBN)' : 'winyl / inny GTIN'} · ${meta.via}`
+    + (meta.detectMs != null ? ` · wykryto w ${meta.detectMs} ms` : '') + ' · szukam…';
+  const t = performance.now();
+  const r = await (await fetch(`${base}api/${kind}/${code.padStart(kind === 'book' ? 13 : code.length, '0')}`)).json();
+  current.lookupMs = Math.round(performance.now() - t);
+  current.source = r.source; current.count = r.candidates.length;
+  current.steps = r.steps.map((s) => `${s.source}:${s.ms}ms${s.error ? '(' + s.error + ')' : ''}:${Array.isArray(s.candidates) ? s.candidates.length : s.candidates}`).join(' → ');
+  render(r);
+}
+
+function render(r) {
+  const steps = r.steps.map((s) => `<tr><td>${s.source}</td><td>${s.ms} ms</td><td>${Array.isArray(s.candidates) ? s.candidates.length : s.candidates} wyn.</td><td>${s.error || ''}</td></tr>`).join('');
+  let html = `<p class="muted">Wyszukiwanie: <b>${current.lookupMs} ms</b> łącznie (serwer + sieć)</p><table>${steps}</table>`;
+  if (!r.candidates.length) {
+    html += `<h3>Nie znaleźliśmy tej pozycji</h3><p class="muted">Kod zachowany do formularza ręcznego.</p>`;
+  } else {
+    html += `<h3>${r.candidates.length === 1 ? 'Rozpoznano' : r.candidates.length + ' kandydatów — wybierz'} (${r.source})</h3>`;
+    html += r.candidates.map((c, i) => `
+      <div class="cand" data-i="${i}">
+        ${i === 0 && r.cover ? `<img src="${r.cover}" alt="">` : c.cover ? `<img src="${c.cover}" alt="">` : ''}
+        <div><b>${c.title || '?'}</b><br>
+        ${r.kind === 'book'
+          ? `${c.creators || ''}<br><span class="muted">${c.publisher || ''} ${c.year || ''} ${c.extra ? '· ' + c.extra : ''} · ${c.id}</span>`
+          : `<span class="muted">${c.label || ''} · ${c.catno || ''} · ${c.country || ''} ${c.year || ''}<br>${c.format || ''} · ${c.id}</span>`}
+        </div></div>`).join('');
+    html += `<p class="muted">Okładka: ${r.cover ? 'jest' : 'brak'}</p>`;
+  }
+  html += `<div class="row"><button id="next">Skanuj następny</button></div>`;
+  $('result').innerHTML = html;
+  $('status').innerHTML = $('status').innerHTML.replace(' · szukam…', '');
+  current.cover = !!r.cover;
+  document.querySelectorAll('.cand').forEach((el) => el.onclick = () => {
+    document.querySelectorAll('.cand').forEach((x) => x.classList.remove('sel'));
+    el.classList.add('sel');
+    current.picked = Number(el.dataset.i);
+    current.pickMs = Math.round(performance.now() - current.tFound);
+  });
+  $('next').onclick = () => $('start').click();
+}
+
+// ----- rating + log -----
+document.querySelectorAll('[data-rate]').forEach((b) => b.onclick = async () => {
+  if (!current) return;
+  const rec = { ...current, rating: b.dataset.rate, note: $('note').value, engine: engineName, loadMs };
+  delete rec.tFound;
+  await fetch(`${base}api/log`, { method: 'POST', body: JSON.stringify(rec) });
+  session.push(rec);
+  $('logged').textContent = `Zapisano ocenę „${rec.rating}” dla ${rec.code}.`;
+  $('note').value = '';
+  $('session').innerHTML = '<tr><td>kod</td><td>typ</td><td>sposób</td><td>wykr.</td><td>szuk.</td><td>wyn.</td><td>wybór</td><td>ocena</td></tr>'
+    + session.map((s) => `<tr><td>${s.code}</td><td>${s.kind}</td><td>${s.via}</td><td>${s.detectMs ?? '—'}</td><td>${s.lookupMs}</td><td>${s.count}</td><td>${s.picked ?? '—'}</td><td>${s.rating}</td></tr>`).join('');
+});
+</script>
+</body>
+</html>
