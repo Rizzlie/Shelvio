@@ -6,7 +6,6 @@ interface PingResponse {
   message: string;
 }
 
-/** Placeholder page proving the dev-server proxy reaches the API on the same origin. */
 @Component({
   imports: [RouterOutlet],
   selector: 'app-root',
