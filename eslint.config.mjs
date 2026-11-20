@@ -23,7 +23,12 @@ const scopeConstraints = [
   },
 ];
 
-/** Type rules apply per scope, because `type:feature` etc. mean different things on each side. */
+/**
+ * Type rules apply per scope, because `type:feature` etc. mean different things on each side.
+ * `type:app` is not in the spec's table: apps are the composition roots (the web app bootstraps
+ * the shell, the api app wires implementations such as Identity's account hooks), so each may
+ * reach every library type on its own side.
+ */
 const typeRules = (scope, rules) =>
   Object.entries(rules).map(([type, allowed]) => ({
     allSourceTags: [`scope:${scope}`, `type:${type}`],
@@ -74,7 +79,7 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\.base)?\.config\.[cm]?[jt]s$'],
+          allow: [String.raw`^.*/eslint(\.base)?\.config\.[cm]?[jt]s$`],
           depConstraints: [
             ...scopeConstraints,
             ...webTypeConstraints,
