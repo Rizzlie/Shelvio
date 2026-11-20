@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Nx workspace with apps and boundary rules).
 
-**Status:** ready-for-human
+**Status:** done
 
 Human setup needed to verify this ticket: `git init`, a GitHub remote, and (after the first green run) a branch protection rule on `main` requiring a PR with all checks green.
 
@@ -13,7 +13,7 @@ Human setup needed to verify this ticket: `git init`, a GitHub remote, and (afte
 - [x] Quality job: `nx affected -t lint test build` on PRs (correct base/head SHAs), `nx run-many -t lint test build` on `main`.
 - [x] CI needs no application secrets.
 - [x] The workflow is structured so later tickets can add steps (migration check in 04, translation-key check in 06) and an e2e job (15).
-- [ ] A PR with a lint error or a non-conventional title fails; a clean PR passes.
+- [x] A PR with a lint error or a non-conventional title fails; a clean PR passes.
 
 ## Comments
 
@@ -21,3 +21,5 @@ Human setup needed to verify this ticket: `git init`, a GitHub remote, and (afte
 - Extension points are marked with comments in the workflow: steps for 04 and 06 go in `quality` before the Nx checks; the e2e job (15) is a sibling job.
 - Checked locally: commitlint passes `ci: add GitHub Actions pipeline` and fails `Add CI`, `Merge branch foo` and `feat(Web): x`; `--last` and `--from/--to` work; `CI=true nx run-many -t lint test build` passes (8 tasks).
 - Left for a human (hence `ready-for-human`): open the PR and watch the first run, push a throwaway PR with a lint error and a non-conventional title to confirm both fail, then add the branch protection rule on `main` requiring the `Commit and PR conventions` and `Lint, unit tests and production builds` checks. Allow squash merges only: the `main` run lints just the latest commit, and commitlint skips `Merge pull request ...` commits, so a merge commit would make that check vacuous.
+- Verified on GitHub: PR #2 passed both checks. Throwaway PR #3 (title `Add CI test`, a `debugger;` in `apps/api`) failed both: `type-empty`/`subject-empty` on the title, `no-debugger` in lint. Closed unmerged.
+- `main` protection is on: PR required (0 approvals), both checks required with the branch up to date, rules also apply to admins, no force pushes or deletion. The repo allows squash merges only, using the PR title as the commit title.
