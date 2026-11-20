@@ -1,0 +1,40 @@
+# Local development infrastructure: `docker compose up -d`.
+# Credentials here are for a local throwaway database only; they match `.env.example`.
+name: shelvio
+
+services:
+  postgres:
+    # Same major version as the hosted database (Neon) and the Testcontainers fixture.
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: shelvio
+      POSTGRES_USER: shelvio
+      POSTGRES_PASSWORD: shelvio
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5434}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U shelvio -d shelvio']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # S3-compatible object storage for item photos and covers, used from `mvp-catalog` on.
+  # MinIO no longer publishes community images to Docker Hub; Chainguard builds them from source.
+  # Pinned by digest because Chainguard offers only the `latest` tag for free. The image has no
+  # shell, so there is no container healthcheck; `GET /minio/health/live` answers when it is up.
+  minio:
+    image: chainguard/minio:latest@sha256:e9cf6b99c226e9539ed0f14b6f00e37b07da153c7ba1f4f8709c807574b471ec
+    command: ['server', '/data']
+    environment:
+      MINIO_ROOT_USER: shelvio
+      MINIO_ROOT_PASSWORD: shelvio-local
+    ports:
+      - '127.0.0.1:${MINIO_PORT:-9000}:9000'
+    volumes:
+      - minio-data:/data
+
+volumes:
+  postgres-data:
+  minio-data:
