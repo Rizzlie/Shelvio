@@ -1,4 +1,5 @@
 import nx from '@nx/eslint-plugin';
+import angular from 'angular-eslint';
 
 /**
  * Module boundaries (spec "Workspace and module boundaries").
@@ -103,6 +104,32 @@ export default [
     ],
     rules: {
       '@nx/enforce-module-boundaries': boundaries(),
+    },
+  },
+  {
+    // All interface text goes through Transloco (spec "Translation and formatting"), so templates
+    // hold keys, never text. Angular's `i18n` rule flags literal text, the literal parts of
+    // interpolations and translatable attributes (`aria-label`, `title`, `placeholder`, …); the fix
+    // is a key in `pl.json` and the `transloco` pipe. Angular's own `i18n` markers would silence
+    // it without translating anything, so they are banned.
+    files: ['**/*.html'],
+    // The host page, not an Angular template: its only text is the brand name in `<title>`.
+    ignores: ['**/src/index.html'],
+    plugins: { '@angular-eslint/template': angular.templatePlugin },
+    languageOptions: { parser: angular.templateParser },
+    rules: {
+      '@angular-eslint/template/i18n': ['error', { checkId: false, checkDuplicateId: false }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: ':matches(Element, Template)[i18n]',
+          message: 'Shelvio translates with Transloco: use a key and the `transloco` pipe.',
+        },
+        {
+          selector: 'TextAttribute[i18n]',
+          message: 'Shelvio translates with Transloco: bind the attribute to a translated key.',
+        },
+      ],
     },
   },
   {
