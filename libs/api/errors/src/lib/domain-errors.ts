@@ -29,7 +29,7 @@ export class Conflict extends DomainError {
   override readonly name = 'Conflict';
 }
 
-/** The input is well-formed but breaks a domain rule. */
+/** The input breaks its contract (code `request.invalid`, thrown by the API) or a domain rule. */
 export class ValidationFailed extends DomainError {
   override readonly name = 'ValidationFailed';
 }

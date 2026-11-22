@@ -33,7 +33,7 @@ interface Failure {
 }
 
 /** Codes for HTTP-level refusals raised before or outside domain code, by status. */
-const HTTP_STATUS_CODE: Partial<Record<HttpStatus, ErrorCode>> = {
+const ERROR_CODE_BY_STATUS: Partial<Record<HttpStatus, ErrorCode>> = {
   [HttpStatus.BAD_REQUEST]: 'request.invalid',
   [HttpStatus.UNAUTHORIZED]: 'auth.unauthenticated',
   [HttpStatus.FORBIDDEN]: 'common.forbidden',
@@ -61,7 +61,8 @@ function toFailure(exception: unknown): Failure {
     if (status) return { status, code: exception.code, params: exception.params };
   }
   const status = clientErrorStatus(exception);
-  if (status) return { status, code: HTTP_STATUS_CODE[status] ?? 'request.rejected', params: {} };
+  if (status)
+    return { status, code: ERROR_CODE_BY_STATUS[status] ?? 'request.rejected', params: {} };
   return { status: HttpStatus.INTERNAL_SERVER_ERROR, code: 'common.unexpected', params: {} };
 }
 

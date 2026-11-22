@@ -7,7 +7,7 @@
 | `NotFound`         | The thing doesn't exist, or the actor may not know it does | 404  |
 | `Forbidden`        | The actor is known but not allowed                         | 403  |
 | `Conflict`         | Clashes with the current state, such as a duplicate        | 409  |
-| `ValidationFailed` | Well-formed input that breaks a rule                       | 400  |
+| `ValidationFailed` | Input that breaks its contract or a domain rule            | 400  |
 | `Unauthenticated`  | No acting user (no or an invalid session)                  | 401  |
 
 Each one takes a code from `ErrorCode` in `@shelvio/shared/contracts` and optional JSON-serialisable params for the translation, never text:
