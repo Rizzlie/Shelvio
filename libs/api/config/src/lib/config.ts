@@ -60,7 +60,7 @@ const emailList = z
  */
 export const configSchema = z.object({
   NODE_ENV: oneOf(NODE_ENVS),
-  PORT: port,
+  API_PORT: port,
   DATABASE_URL: url(['postgres:', 'postgresql:']),
   APP_ORIGIN: httpOrigin,
   GOOGLE_CLIENT_ID: required,

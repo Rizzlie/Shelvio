@@ -8,7 +8,7 @@ import { configureApp } from '../app/configure-app';
 export function testConfig(overrides: Partial<Record<keyof Config, string>> = {}): Config {
   return parseConfig({
     NODE_ENV: 'test',
-    PORT: '3000',
+    API_PORT: '3000',
     DATABASE_URL: 'postgres://shelvio:shelvio@127.0.0.1:5432/shelvio',
     APP_ORIGIN: 'http://localhost:4200',
     GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com',

@@ -2,7 +2,7 @@ import { ConfigError, parseConfig } from './config';
 
 const validEnv = {
   NODE_ENV: 'development',
-  PORT: '3000',
+  API_PORT: '3000',
   DATABASE_URL: 'postgres://shelvio:shelvio@localhost:5432/shelvio',
   APP_ORIGIN: 'http://localhost:4200',
   GOOGLE_CLIENT_ID: 'client-id.apps.googleusercontent.com',
@@ -26,7 +26,7 @@ describe('parseConfig', () => {
   it('parses a valid environment into typed values', () => {
     const config = parseConfig({
       ...validEnv,
-      PORT: '8080',
+      API_PORT: '8080',
       APP_ORIGIN: 'https://shelvio.example.com',
       SIGNUP_ALLOWLIST: ' Ala@Example.com, bob@example.COM ,',
       LOG_LEVEL: 'debug',
@@ -34,7 +34,7 @@ describe('parseConfig', () => {
 
     expect(config).toEqual({
       NODE_ENV: 'development',
-      PORT: 8080,
+      API_PORT: 8080,
       DATABASE_URL: 'postgres://shelvio:shelvio@localhost:5432/shelvio',
       APP_ORIGIN: 'https://shelvio.example.com',
       GOOGLE_CLIENT_ID: 'client-id.apps.googleusercontent.com',
@@ -51,8 +51,8 @@ describe('parseConfig', () => {
 
   it.each([
     ['NODE_ENV', 'staging'],
-    ['PORT', 'abc'],
-    ['PORT', '70000'],
+    ['API_PORT', 'abc'],
+    ['API_PORT', '70000'],
     ['DATABASE_URL', 'mysql://user:pass@localhost/shelvio'],
     ['DATABASE_URL', 'not a url'],
     ['APP_ORIGIN', 'http://localhost:4200/app'],
@@ -70,12 +70,12 @@ describe('parseConfig', () => {
   it('names every offending variable at once', () => {
     const message = failureMessage({
       ...validEnv,
-      PORT: 'abc',
+      API_PORT: 'abc',
       LOG_LEVEL: undefined,
       APP_ORIGIN: '',
     });
 
-    expect(message).toContain('PORT');
+    expect(message).toContain('API_PORT');
     expect(message).toContain('LOG_LEVEL');
     expect(message).toContain('APP_ORIGIN');
   });

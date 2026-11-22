@@ -46,7 +46,7 @@ async function bootstrap() {
     await NestFactory.create(AppModule.register(config), { bufferLogs: true }),
   );
   await migrate(app, config);
-  await app.listen(config.PORT);
+  await app.listen(config.API_PORT);
   // Set when Nx waits for this server to be ready
   if (process.env['NX_READY_SIGNAL_SOCKET']) {
     try {
@@ -59,7 +59,7 @@ async function bootstrap() {
       // @nx/js isn't installed
     }
   }
-  Logger.log(`API is running on: http://localhost:${config.PORT}/${API_PREFIX}`);
+  Logger.log(`API is running on: http://localhost:${config.API_PORT}/${API_PREFIX}`);
 }
 
 bootstrap();
