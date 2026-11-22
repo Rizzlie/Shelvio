@@ -5,6 +5,7 @@
     "sourceMap": true,
     "declaration": false,
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "importHelpers": true,
@@ -19,7 +20,9 @@
       "@shelvio/api/db/testing": ["./libs/api/db/src/testing/index.ts"],
       "@shelvio/api/errors": ["./libs/api/errors/src/index.ts"],
       "@shelvio/api/testing/fake-oidc": ["./libs/api/testing/fake-oidc/src/index.ts"],
-      "@shelvio/shared/contracts": ["./libs/shared/contracts/src/index.ts"]
+      "@shelvio/shared/contracts": ["./libs/shared/contracts/src/index.ts"],
+      "@shelvio/web/shared/i18n": ["./libs/web/shared/i18n/src/index.ts"],
+      "@shelvio/web/not-found/feature": ["./libs/web/not-found/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
