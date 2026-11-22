@@ -13,8 +13,10 @@ import { startFakeOidcProvider } from '@shelvio/api/testing/fake-oidc';
 const provider = await startFakeOidcProvider({
   clientId,
   clientSecret,
-  redirectUri,
+  redirectUri, // the only one accepted, compared exactly
   accounts: [{ sub, email, emailVerified: true, name, picture }],
+  // optional: now, an epoch-ms clock for code expiry (codes live 60 s). ID token iat/exp always use
+  // real time, because openid-client checks them against the real clock.
 });
 
 // Google's discovery would reject the loopback URL, so hand openid-client the metadata directly.
@@ -29,14 +31,14 @@ await provider.stop();
 
 ## Endpoints
 
-| Path                                | What it does                                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `/.well-known/openid-configuration` | Discovery metadata (`provider.metadata`): issuer `https://accounts.google.com`, endpoints on loopback. |
-| `/authorize`                        | Lists the accounts as links.                                                                           |
-| `/authorize/approve`                | Following an account's link issues a code and redirects to the redirect URI with `code` and `state`.   |
-| `/token`                            | Exchanges the code for an RS256 ID token.                                                              |
-| `/jwks`                             | The public key that verifies the ID tokens (a new key pair per start).                                 |
+| Path                                | What it does                                                                                                                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/.well-known/openid-configuration` | Discovery metadata (`provider.metadata`): issuer `https://accounts.google.com`, endpoints on loopback.                                                                        |
+| `/authorize`                        | Validates `client_id`, the exact `redirect_uri`, `response_type=code`, PKCE S256, `state` and `nonce` (400 without redirecting otherwise), then lists the accounts as links.  |
+| `/authorize/approve`                | Following an account's link issues a single-use code and redirects to the redirect URI with `code` and `state`.                                                               |
+| `/token`                            | Authenticates the client (`client_secret_post` or `client_secret_basic`), checks the code, its expiry, the redirect URI and the PKCE verifier, and returns an RS256 ID token. |
+| `/jwks`                             | The public key that verifies the ID tokens (a new key pair per start).                                                                                                        |
 
-ID token claims: `iss`, `aud`, `azp`, `sub`, `email`, `email_verified`, `nonce`, `name`, `picture`, `iat`, `exp`. An unknown code is `invalid_grant` (400).
+ID token claims: `iss`, `aud`, `azp`, `sub`, `email`, `email_verified`, `nonce`, `name`, `picture`, `iat`, `exp`. Errors follow OAuth: `invalid_client` (401), `invalid_grant` (400).
 
 Run `nx test api-testing-fake-oidc` to execute the tests.
