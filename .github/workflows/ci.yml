@@ -55,7 +55,6 @@ jobs:
         if: github.event_name == 'push'
         run: npm exec --no -- commitlint --last --strict --verbose
 
-  # Ticket 06 adds the translation-key check next to the migration check.
   quality:
     name: Lint, unit tests and production builds
     runs-on: ubuntu-24.04
@@ -75,6 +74,8 @@ jobs:
         # drizzle-kit asks interactively when a change looks like a rename; never wait for it here.
         timeout-minutes: 5
         run: npm exec --no -- nx run api-db:check-migrations
+      - name: Check every translation key is in pl.json and every pl.json key is used
+        run: npm exec --no -- nx run web:check-translations
       - name: Run affected PR checks
         if: github.event_name == 'pull_request'
         run: npm exec --no -- nx affected -t lint test build --base="$NX_BASE" --head="$NX_HEAD"

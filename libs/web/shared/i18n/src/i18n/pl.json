@@ -1,0 +1,25 @@
+{
+  "shared": {
+    "errors": {
+      "common": {
+        "notFound": "Nie znaleziono — ta kolekcja lub pozycja nie istnieje albo nie masz do niej dostępu.",
+        "forbidden": "Nie masz uprawnień, żeby to zrobić.",
+        "conflict": "Nie można tego zrobić, bo koliduje to z istniejącymi danymi.",
+        "invalid": "Wprowadzone dane są nieprawidłowe.",
+        "unexpected": "Coś poszło nie tak. Spróbuj ponownie za chwilę."
+      },
+      "request": {
+        "invalid": "Wprowadzone dane są nieprawidłowe.",
+        "foreignOrigin": "Odrzucono żądanie ze względów bezpieczeństwa. Odśwież stronę i spróbuj ponownie.",
+        "tooLarge": "Przesyłane dane są za duże.",
+        "rejected": "Nie udało się tego zrobić. Spróbuj ponownie."
+      },
+      "auth": {
+        "unauthenticated": "Twoja sesja wygasła. Zaloguj się ponownie.",
+        "inviteOnly": "Shelvio działa na zaproszenia. Poproś właściciela kolekcji o dostęp.",
+        "emailNotVerified": "Google nie potwierdził Twojego adresu e-mail. Potwierdź go i spróbuj ponownie."
+      },
+      "unknown": "Coś poszło nie tak. Spróbuj ponownie za chwilę."
+    }
+  }
+}

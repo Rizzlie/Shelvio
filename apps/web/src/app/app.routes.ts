@@ -1,3 +1,8 @@
-import { Route } from '@angular/router';
+import { Routes } from '@angular/router';
 
-export const appRoutes: Route[] = [];
+export const appRoutes: Routes = [
+  {
+    path: '**',
+    loadChildren: () => import('@shelvio/web/not-found/feature').then((m) => m.notFoundRoutes),
+  },
+];

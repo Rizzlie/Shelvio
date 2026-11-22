@@ -11,3 +11,6 @@ libs/api/db/migrations
 
 # Vendored agent skills, pinned by skills-lock.json; reformatting would break their hashes.
 /.claude/skills
+
+# Angular's build cache.
+.angular

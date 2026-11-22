@@ -66,6 +66,13 @@
         "proxyConfig": "apps/web/proxy.conf.json"
       }
     },
+    "check-translations": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "transloco-keys-manager find"
+      }
+    },
     "serve-static": {
       "continuous": true,
       "readyWhen": {
