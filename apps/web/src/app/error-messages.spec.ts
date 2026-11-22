@@ -1,6 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ErrorHandler } from '@angular/core';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { Component, ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatSnackBarHarness } from '@angular/material/snack-bar/testing';
 import { provideI18n } from '@shelvio/web/shared/i18n';
 import { provideErrorMessages } from './error-messages';
 
@@ -11,8 +13,14 @@ const problem = (status: number, code: string) =>
     error: { type: 'about:blank', title: '', status, code, params: {} },
   });
 
-async function expectMessage(text: string) {
-  await vi.waitFor(() => expect(document.body.textContent).toContain(text));
+/** Snackbars render in an overlay outside any component; the harness needs a fixture to find it. */
+@Component({ template: '' })
+class Page {}
+
+async function shownMessage() {
+  const snackBars = TestbedHarnessEnvironment.documentRootLoader(TestBed.createComponent(Page));
+  const snackBar = await vi.waitFor(() => snackBars.getHarness(MatSnackBarHarness));
+  return snackBar.getMessage();
 }
 
 describe('provideErrorMessages', () => {
@@ -23,7 +31,7 @@ describe('provideErrorMessages', () => {
   it('tells the person what an unhandled problem means', async () => {
     TestBed.inject(ErrorHandler).handleError(problem(403, 'common.forbidden'));
 
-    await expectMessage('Nie masz uprawnień, żeby to zrobić.');
+    expect(await shownMessage()).toBe('Nie masz uprawnień, żeby to zrobić.');
   });
 
   it('shows the generic message for any other error, and still logs it', async () => {
@@ -32,7 +40,7 @@ describe('provideErrorMessages', () => {
 
     TestBed.inject(ErrorHandler).handleError(bug);
 
-    await expectMessage('Coś poszło nie tak. Spróbuj ponownie za chwilę.');
+    expect(await shownMessage()).toBe('Coś poszło nie tak. Spróbuj ponownie za chwilę.');
     expect(log).toHaveBeenCalledWith(expect.anything(), bug);
   });
 });

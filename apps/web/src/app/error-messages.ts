@@ -2,8 +2,8 @@ import {
   EnvironmentProviders,
   ErrorHandler,
   inject,
-  Injectable,
   makeEnvironmentProviders,
+  Service,
 } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoService } from '@jsverse/transloco';
@@ -15,7 +15,7 @@ import { take } from 'rxjs';
  * translated snackbar: the message for the problem's code, or the generic one. Only non-problems
  * are logged; a problem is an answer from the API, already visible in the network log.
  */
-@Injectable()
+@Service({ autoProvided: false })
 class SnackBarErrorHandler extends ErrorHandler {
   private readonly snackBar = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);

@@ -48,12 +48,11 @@ describe('notFoundOnPageLoad', () => {
 
       await harness.navigateByUrl('/kolekcje/123').catch(() => undefined);
 
-      await vi.waitFor(() => {
-        harness.detectChanges();
+      await vi.waitFor(() =>
         expect(harness.routeNativeElement?.textContent?.trim()).toBe(
           'Nie znaleziono — ta kolekcja lub pozycja nie istnieje albo nie masz do niej dostępu.',
-        );
-      });
+        ),
+      );
       expect(TestBed.inject(Location).path()).toBe('/kolekcje/123');
     },
   );
