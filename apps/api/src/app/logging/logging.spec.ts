@@ -17,7 +17,7 @@ describe('API logs', () => {
         LOG_LEVEL: 'info',
         DATABASE_URL: UNREACHABLE_DATABASE_URL.replace(':shelvio@', `:${DATABASE_PASSWORD}@`),
       }),
-      logs,
+      { logStream: logs },
     );
     await fetch(`${api.baseUrl}/api/health?code=${OAUTH_CODE}&state=abc`, {
       headers: {
@@ -46,7 +46,9 @@ describe('API logs', () => {
 
   it('respect LOG_LEVEL', async () => {
     const quiet = new LogCapture();
-    const quietApi = await startTestApp(testConfig({ LOG_LEVEL: 'error' }), quiet);
+    const quietApi = await startTestApp(testConfig({ LOG_LEVEL: 'error' }), {
+      logStream: quiet,
+    });
     await fetch(`${quietApi.baseUrl}/api/ping`);
     await quietApi.app.close();
 
