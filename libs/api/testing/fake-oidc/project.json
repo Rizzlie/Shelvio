@@ -1,0 +1,8 @@
+{
+  "name": "api-testing-fake-oidc",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api/testing/fake-oidc/src",
+  "projectType": "library",
+  "tags": ["scope:api", "type:testing"],
+  "targets": {}
+}
