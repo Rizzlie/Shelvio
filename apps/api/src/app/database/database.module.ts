@@ -7,7 +7,7 @@ export const DATABASE_POOL = Symbol('DATABASE_POOL');
 
 const logger = new Logger('Database');
 
-/** Owns the process-wide Postgres pool. Ticket 04 moves persistence into the `db` library. */
+/** Owns the process-wide Postgres pool; tables, queries and migrations live in `@shelvio/api/db`. */
 @Module({
   providers: [
     {

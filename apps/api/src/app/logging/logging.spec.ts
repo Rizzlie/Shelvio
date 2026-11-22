@@ -1,5 +1,5 @@
 import { LogCapture, TestApp, startTestApp, testConfig } from '../../testing/test-app';
-import { UNREACHABLE_DATABASE_URL } from '../../testing/postgres-container';
+import { UNREACHABLE_DATABASE_URL } from '@shelvio/api/db/testing';
 
 describe('API logs', () => {
   const SESSION_TOKEN = 'session-token-that-must-not-leak';

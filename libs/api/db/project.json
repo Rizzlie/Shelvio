@@ -1,0 +1,24 @@
+{
+  "name": "api-db",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api/db/src",
+  "projectType": "library",
+  "tags": ["scope:api", "type:data-access"],
+  "// targets": "to see all targets run: nx show project api-db --web",
+  "targets": {
+    "generate-migration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "drizzle-kit generate --config drizzle.config.ts"
+      }
+    },
+    "check-migrations": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "node scripts/check-migrations.mjs"
+      }
+    }
+  }
+}
