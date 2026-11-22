@@ -17,10 +17,8 @@ describe('app routes', () => {
 
     await harness.navigateByUrl('/kolekcje/nie-ma-takiej');
 
-    await vi.waitFor(() => {
-      harness.detectChanges();
-      expect(harness.routeNativeElement?.textContent?.trim()).toBe(notFound);
-    });
+    // The scope's translations load after the route renders; the pipe then updates the screen.
+    await vi.waitFor(() => expect(harness.routeNativeElement?.textContent?.trim()).toBe(notFound));
     expect(TestBed.inject(Router).url).toBe('/kolekcje/nie-ma-takiej');
   });
 });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 
 /**
@@ -8,7 +8,10 @@ import { TranslocoPipe } from '@jsverse/transloco';
 @Component({
   imports: [TranslocoPipe],
   selector: 'app-not-found-page',
-  templateUrl: './not-found-page.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <main>
+      <h1>{{ 'notFound.page.message' | transloco }}</h1>
+    </main>
+  `,
 })
 export class NotFoundPage {}

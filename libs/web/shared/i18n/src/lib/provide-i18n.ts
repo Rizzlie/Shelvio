@@ -1,9 +1,4 @@
-import {
-  EnvironmentProviders,
-  Injectable,
-  isDevMode,
-  makeEnvironmentProviders,
-} from '@angular/core';
+import { EnvironmentProviders, isDevMode, makeEnvironmentProviders, Service } from '@angular/core';
 import { provideTransloco, Translation, TranslocoLoader } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 import { provideTranslocoMessageformat } from '@jsverse/transloco-messageformat';
@@ -21,7 +16,7 @@ const sharedTranslations: Readonly<Record<string, () => Promise<{ default: Trans
   pl: () => import('../i18n/pl.json'),
 };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 class SharedTranslationLoader implements TranslocoLoader {
   getTranslation(lang: string) {
     return sharedTranslations[lang]().then((module) => module.default);
