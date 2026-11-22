@@ -27,6 +27,10 @@ Every number in text goes through an ICU `plural`, so it gets the Polish form an
 
 `errorMessageKeys` maps every `ErrorCode` from `@shelvio/shared/contracts` to its shared key (`shared.errors.<code>`). It is typed against `ErrorCode`, so a new code doesn't compile until it has a key. `unknownErrorMessageKey` is for errors without a known code.
 
+`problemMessage(error)` turns any error into `{ key, params }`: the problem's code and params for an `HttpErrorResponse` carrying a `problem+json` body with a known code, the generic message for everything else (an unknown code, a network failure, a bug). Show it with `{{ message.key | transloco: message.params }}`. `problemOf(error)` returns the parsed problem itself.
+
+The app handles the rest. A 404 while a route resolves its data shows the 404 screen at the address the person opened, and errors nobody caught appear as a snackbar with their message (`apps/web/src/app/not-found-on-page-load.ts` and `apps/web/src/app/error-messages.ts`).
+
 ## Checks
 
 `nx run web:check-translations` runs `transloco-keys-manager find` (configured in the root `transloco.config.cjs`) and fails when a key used in code is missing from its `pl.json` or a `pl.json` key is never used. CI runs it on every PR. Keys built at runtime are invisible to it, so wrap them in `marker()` from `@jsverse/transloco-keys-manager/marker`, as `errorMessageKeys` does.
