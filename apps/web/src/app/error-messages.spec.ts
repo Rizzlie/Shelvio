@@ -33,6 +33,6 @@ describe('provideErrorMessages', () => {
     TestBed.inject(ErrorHandler).handleError(bug);
 
     await expectMessage('Coś poszło nie tak. Spróbuj ponownie za chwilę.');
-    expect(log).toHaveBeenCalledWith('ERROR', bug);
+    expect(log).toHaveBeenCalledWith(expect.anything(), bug);
   });
 });

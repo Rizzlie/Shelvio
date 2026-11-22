@@ -40,20 +40,23 @@ function setUp(error: HttpErrorResponse) {
 }
 
 describe('notFoundOnPageLoad', () => {
-  it('shows the 404 screen when a page load gets a 404 problem, keeping the URL', async () => {
-    setUp(problem(404, 'common.notFound'));
-    const harness = await RouterTestingHarness.create();
+  it.each(['common.notFound', 'collection.notFound'])(
+    'shows the 404 screen when a page load gets a 404 problem (%s), keeping the URL',
+    async (code) => {
+      setUp(problem(404, code));
+      const harness = await RouterTestingHarness.create();
 
-    await harness.navigateByUrl('/kolekcje/123').catch(() => undefined);
+      await harness.navigateByUrl('/kolekcje/123').catch(() => undefined);
 
-    await vi.waitFor(() => {
-      harness.detectChanges();
-      expect(harness.routeNativeElement?.textContent?.trim()).toBe(
-        'Nie znaleziono — ta kolekcja lub pozycja nie istnieje albo nie masz do niej dostępu.',
-      );
-    });
-    expect(TestBed.inject(Location).path()).toBe('/kolekcje/123');
-  });
+      await vi.waitFor(() => {
+        harness.detectChanges();
+        expect(harness.routeNativeElement?.textContent?.trim()).toBe(
+          'Nie znaleziono — ta kolekcja lub pozycja nie istnieje albo nie masz do niej dostępu.',
+        );
+      });
+      expect(TestBed.inject(Location).path()).toBe('/kolekcje/123');
+    },
+  );
 
   it('leaves other problems to the caller', async () => {
     setUp(problem(403, 'common.forbidden'));

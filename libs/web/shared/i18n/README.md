@@ -29,7 +29,7 @@ Every number in text goes through an ICU `plural`, so it gets the Polish form an
 
 `problemMessage(error)` turns any error into `{ key, params }`: the problem's code and params for an `HttpErrorResponse` carrying a `problem+json` body with a known code, the generic message for everything else (an unknown code, a network failure, a bug). Show it with `{{ message.key | transloco: message.params }}`. `problemOf(error)` returns the parsed problem itself.
 
-The app handles the rest. A 404 problem while a route resolves its data shows the 404 screen at the address the person opened, and errors nobody caught appear as a snackbar with their message (`apps/web/src/app/not-found-on-page-load.ts`, `error-messages.ts`).
+The app handles the rest. A 404 while a route resolves its data shows the 404 screen at the address the person opened, and errors nobody caught appear as a snackbar with their message (`apps/web/src/app/not-found-on-page-load.ts` and `apps/web/src/app/error-messages.ts`).
 
 ## Checks
 
