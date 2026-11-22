@@ -4,11 +4,11 @@
 
 **Blocked by:** 04 (Database and migrations).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `shared/contracts` holds the error-code vocabulary as a shared const (incl. codes used later, such as `auth.inviteOnly` and `auth.emailNotVerified`) and the pattern for REST contracts as Zod schemas; `nestjs-zod` validates request bodies and params with them.
-- [ ] Typed domain errors `NotFound`, `Forbidden`, `Conflict`, `ValidationFailed` and `Unauthenticated`, usable from `domain` libraries without Nest imports.
-- [ ] One Nest exception filter maps domain errors and Zod validation failures to `problem+json` with `code` and `params` and the right status (404, 403, 409, 400, 401); unexpected errors become 500 without leaking details.
-- [ ] CORS allows only `APP_ORIGIN`, with credentials.
-- [ ] Every POST/PUT/PATCH/DELETE must carry an `Origin` equal to `APP_ORIGIN`; a missing or foreign Origin → 403 `problem+json`. GET is unaffected.
-- [ ] HTTP tests on an in-process Nest app (test-only routes where needed) cover each mapping, CORS and the Origin check.
+- [x] `shared/contracts` holds the error-code vocabulary as a shared const (incl. codes used later, such as `auth.inviteOnly` and `auth.emailNotVerified`) and the pattern for REST contracts as Zod schemas; `nestjs-zod` validates request bodies and params with them.
+- [x] Typed domain errors `NotFound`, `Forbidden`, `Conflict`, `ValidationFailed` and `Unauthenticated`, usable from `domain` libraries without Nest imports.
+- [x] One Nest exception filter maps domain errors and Zod validation failures to `problem+json` with `code` and `params` and the right status (404, 403, 409, 400, 401); unexpected errors become 500 without leaking details.
+- [x] CORS allows only `APP_ORIGIN`, with credentials.
+- [x] Every POST/PUT/PATCH/DELETE must carry an `Origin` equal to `APP_ORIGIN`; a missing or foreign Origin → 403 `problem+json`. GET is unaffected.
+- [x] HTTP tests on an in-process Nest app (test-only routes where needed) cover each mapping, CORS and the Origin check.

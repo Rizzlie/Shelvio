@@ -122,7 +122,7 @@ describe('API errors as problem+json', () => {
   it('renders a body that is not valid JSON as 400 request.invalid', async () => {
     const response = await fetch(`${api.baseUrl}/api/test/errors/echo`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { origin: 'http://localhost:4200', 'content-type': 'application/json' },
       body: '{"title": ',
     });
 
@@ -138,7 +138,7 @@ describe('API errors as problem+json', () => {
   it('renders a body over the size limit as 413 request.tooLarge', async () => {
     const response = await fetch(`${api.baseUrl}/api/test/errors/echo`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { origin: 'http://localhost:4200', 'content-type': 'application/json' },
       body: JSON.stringify({ title: 'x'.repeat(200_000) }),
     });
 

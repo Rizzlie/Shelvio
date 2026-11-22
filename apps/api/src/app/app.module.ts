@@ -1,6 +1,6 @@
 import type { Writable } from 'node:stream';
 import { DynamicModule, Module } from '@nestjs/common';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import type { Config } from '@shelvio/api/config';
 import { LoggerModule } from 'nestjs-pino';
 import { APP_CONFIG } from './app-config';
@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health/health.controller';
 import { ContractValidationPipe } from './http/contract-validation.pipe';
+import { OriginGuard } from './http/origin.guard';
 import { ProblemDetailsFilter } from './http/problem-details.filter';
 import { loggerOptions } from './logging/logger-options';
 
@@ -25,6 +26,7 @@ export class AppModule {
       providers: [
         { provide: APP_CONFIG, useValue: config },
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },
+        { provide: APP_GUARD, useClass: OriginGuard },
         { provide: APP_PIPE, useClass: ContractValidationPipe },
       ],
       exports: [APP_CONFIG],
