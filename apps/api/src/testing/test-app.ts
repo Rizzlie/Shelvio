@@ -1,5 +1,5 @@
 import { Writable } from 'node:stream';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Config, parseConfig } from '@shelvio/api/config';
 import { AppModule } from '../app/app.module';
@@ -46,10 +46,21 @@ export interface TestApp {
   baseUrl: string;
 }
 
+export interface TestAppOptions {
+  /** Receives the API's logs instead of stdout. */
+  logStream?: Writable;
+  /** Test-only controllers mounted next to the real ones, behind the same app-wide setup. */
+  controllers?: Type[];
+}
+
 /** Starts the real API module in-process on a random loopback port. */
-export async function startTestApp(config: Config, logStream?: Writable): Promise<TestApp> {
+export async function startTestApp(
+  config: Config,
+  { logStream, controllers = [] }: TestAppOptions = {},
+): Promise<TestApp> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.register(config, logStream)],
+    controllers,
   }).compile();
   const app = configureApp(moduleRef.createNestApplication({ bufferLogs: true }));
   await app.listen(0, '127.0.0.1');

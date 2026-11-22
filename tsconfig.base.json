@@ -16,6 +16,7 @@
     "paths": {
       "@shelvio/api/config": ["./libs/api/config/src/index.ts"],
       "@shelvio/api/db": ["./libs/api/db/src/index.ts"],
+      "@shelvio/api/errors": ["./libs/api/errors/src/index.ts"],
       "@shelvio/api/db/testing": ["./libs/api/db/src/testing/index.ts"],
       "@shelvio/api/testing/fake-oidc": ["./libs/api/testing/fake-oidc/src/index.ts"],
       "@shelvio/shared/contracts": ["./libs/shared/contracts/src/index.ts"]
