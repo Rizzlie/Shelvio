@@ -1,7 +1,6 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomBytes, randomUUID, sign, type KeyObject } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { exportJWK, generateKeyPair, SignJWT, type JWK } from 'jose';
 
 /** The issuer the fake claims to be: the API verifies ID tokens exactly as it would Google's. */
 const GOOGLE_ISSUER = 'https://accounts.google.com';
@@ -85,8 +84,8 @@ export async function startFakeOidcProvider(
   const codes = new Map<string, PendingCode>();
 
   const kid = randomUUID();
-  const { privateKey, publicKey } = await generateKeyPair('RS256', { extractable: true });
-  const jwk: JWK = { ...(await exportJWK(publicKey)), kid, alg: 'RS256', use: 'sig' };
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = { ...publicKey.export({ format: 'jwk' }), kid, alg: 'RS256', use: 'sig' };
 
   const server = createServer((req, res) => {
     handle(req, res).catch((err: unknown) => {
@@ -180,21 +179,23 @@ export async function startFakeOidcProvider(
     if (!pending) throw new OAuthError(400, 'invalid_grant', 'unknown code');
     const { request, account } = pending;
     const issuedAt = Math.floor(Date.now() / 1000);
-    const idToken = await new SignJWT({
-      email: account.email,
-      email_verified: account.emailVerified,
-      nonce: request.nonce,
-      name: account.name,
-      picture: account.picture,
-      azp: options.clientId,
-    })
-      .setProtectedHeader({ alg: 'RS256', kid, typ: 'JWT' })
-      .setIssuer(GOOGLE_ISSUER)
-      .setAudience(options.clientId)
-      .setSubject(account.sub)
-      .setIssuedAt(issuedAt)
-      .setExpirationTime(issuedAt + ID_TOKEN_TTL_S)
-      .sign(privateKey);
+    const idToken = signRs256Jwt(
+      { alg: 'RS256', kid, typ: 'JWT' },
+      {
+        iss: GOOGLE_ISSUER,
+        aud: options.clientId,
+        azp: options.clientId,
+        sub: account.sub,
+        email: account.email,
+        email_verified: account.emailVerified,
+        nonce: request.nonce,
+        name: account.name,
+        picture: account.picture,
+        iat: issuedAt,
+        exp: issuedAt + ID_TOKEN_TTL_S,
+      },
+      privateKey,
+    );
     return {
       access_token: randomBytes(32).toString('base64url'),
       token_type: 'Bearer',
@@ -228,6 +229,14 @@ export async function startFakeOidcProvider(
   }
 
   return { url, metadata, signIn, stop };
+}
+
+/** A compact JWS (RFC 7515) signed with RSASSA-PKCS1-v1_5 SHA-256, i.e. JWT alg `RS256`. */
+function signRs256Jwt(header: object, payload: object, key: KeyObject): string {
+  const encode = (part: object) => Buffer.from(JSON.stringify(part)).toString('base64url');
+  const signingInput = `${encode(header)}.${encode(payload)}`;
+  const signature = sign('sha256', Buffer.from(signingInput), key).toString('base64url');
+  return `${signingInput}.${signature}`;
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
