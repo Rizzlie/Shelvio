@@ -32,12 +32,13 @@ afterEach(async () => {
   provider = undefined;
 });
 
-async function start() {
+async function start(options: { now?: () => number } = {}) {
   provider = await startFakeOidcProvider({
     clientId,
     clientSecret,
     redirectUri,
     accounts: [owner, outsider],
+    ...options,
   });
   return provider;
 }
@@ -128,6 +129,117 @@ describe('fake OIDC provider', () => {
     const tokens = await exchange(config, callback, attempt);
 
     expect(tokens.claims()).toMatchObject({ sub: outsider.sub, email_verified: false });
+  });
+
+  it('accepts client_secret_basic authentication at the token endpoint', async () => {
+    const fake = await start();
+    const config = relyingParty(fake, undefined, client.ClientSecretBasic(clientSecret));
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+
+    const tokens = await exchange(config, callback, attempt);
+
+    expect(tokens.claims()?.sub).toBe(owner.sub);
+  });
+
+  it('rejects the token request when the client secret is wrong', async () => {
+    const fake = await start();
+    const config = relyingParty(fake, 'not-the-secret');
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+
+    await expect(exchange(config, callback, attempt)).rejects.toMatchObject({
+      error: 'invalid_client',
+    });
+  });
+
+  it('refuses to authorize a redirect URI other than the registered one, without redirecting', async () => {
+    const fake = await start();
+    const attempt = await beginSignIn(relyingParty(fake), {
+      redirect_uri: 'http://127.0.0.1:6666/steal',
+    });
+
+    const page = await fetch(attempt.url, { redirect: 'manual' });
+
+    expect(page.status).toBe(400);
+    expect(page.headers.get('location')).toBeNull();
+    await expect(fake.signIn(attempt.url, owner.sub)).rejects.toThrow(/400/);
+  });
+
+  it.each([
+    ['state is missing', { state: '' }],
+    ['nonce is missing', { nonce: '' }],
+    ['the PKCE challenge is missing', { code_challenge: '' }],
+    ['the PKCE method is not S256', { code_challenge_method: 'plain' }],
+    ['the response type is not code', { response_type: 'token' }],
+    ['the client id is unknown', { client_id: 'someone-else' }],
+  ])('refuses to authorize when %s', async (_case, overrides) => {
+    const fake = await start();
+    const attempt = await beginSignIn(relyingParty(fake), overrides);
+
+    const page = await fetch(attempt.url, { redirect: 'manual' });
+
+    expect(page.status).toBe(400);
+  });
+
+  it('rejects the token request when its redirect URI differs from the authorized one', async () => {
+    const fake = await start();
+    const config = relyingParty(fake);
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+    callback.pathname = '/api/auth/other-callback';
+
+    await expect(exchange(config, callback, attempt)).rejects.toMatchObject({
+      error: 'invalid_grant',
+    });
+  });
+
+  it('rejects the token request when the PKCE verifier does not match the challenge', async () => {
+    const fake = await start();
+    const config = relyingParty(fake);
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+
+    await expect(
+      exchange(config, callback, { ...attempt, codeVerifier: client.randomPKCECodeVerifier() }),
+    ).rejects.toMatchObject({ error: 'invalid_grant' });
+  });
+
+  it('accepts a code only once', async () => {
+    const fake = await start();
+    const config = relyingParty(fake);
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+    await exchange(config, callback, attempt);
+
+    await expect(exchange(config, callback, attempt)).rejects.toMatchObject({
+      error: 'invalid_grant',
+    });
+  });
+
+  it('issues ID tokens openid-client accepts even when the injected clock is far from real time', async () => {
+    const fake = await start({ now: () => Date.parse('2020-01-01T00:00:00Z') });
+    const config = relyingParty(fake);
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+
+    const tokens = await exchange(config, callback, attempt);
+
+    expect(tokens.claims()?.sub).toBe(owner.sub);
+  });
+
+  it('rejects a code used after it expired', async () => {
+    let clock = Date.parse('2026-11-20T12:00:00Z');
+    const fake = await start({ now: () => clock });
+    const config = relyingParty(fake);
+    const attempt = await beginSignIn(config);
+    const callback = await fake.signIn(attempt.url, owner.sub);
+
+    clock += 61_000;
+
+    await expect(exchange(config, callback, attempt)).rejects.toMatchObject({
+      error: 'invalid_grant',
+    });
   });
 });
 

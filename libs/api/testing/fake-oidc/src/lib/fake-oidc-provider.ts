@@ -1,4 +1,11 @@
-import { generateKeyPairSync, randomBytes, randomUUID, sign, type KeyObject } from 'node:crypto';
+import {
+  createHash,
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+  sign,
+  type KeyObject,
+} from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
@@ -17,9 +24,15 @@ export interface FakeOidcAccount {
 export interface FakeOidcProviderOptions {
   clientId: string;
   clientSecret: string;
-  /** The relying party's redirect URI. */
+  /** The only redirect URI the fake accepts, compared exactly. */
   redirectUri: string;
   accounts: FakeOidcAccount[];
+  /**
+   * Clock in epoch milliseconds for authorization-code expiry (codes live 60 s). Default `Date.now`.
+   * ID token `iat`/`exp` always use real time, because `openid-client` checks them against the
+   * real clock: a test's fake clock must not make every token look expired.
+   */
+  now?: () => number;
 }
 
 /** The OIDC discovery document the fake serves; endpoints are on loopback, the issuer is Google's. */
@@ -54,6 +67,7 @@ export interface FakeOidcProvider {
 interface PendingCode {
   request: AuthorizationRequest;
   account: FakeOidcAccount;
+  expiresAt: number;
 }
 
 interface AuthorizationRequest {
@@ -74,12 +88,14 @@ class OAuthError extends Error {
   }
 }
 
+const CODE_TTL_MS = 60_000;
 const ID_TOKEN_TTL_S = 3600;
 
 /** Starts the fake on a random loopback port. Always `stop()` it when done. */
 export async function startFakeOidcProvider(
   options: FakeOidcProviderOptions,
 ): Promise<FakeOidcProvider> {
+  const now = options.now ?? Date.now;
   const accounts = new Map(options.accounts.map((a) => [a.sub, a]));
   const codes = new Map<string, PendingCode>();
 
@@ -135,11 +151,31 @@ export async function startFakeOidcProvider(
     }
   }
 
+  /**
+   * Validates an authorization request. Failures answer 400 with an OAuth error body and never
+   * redirect, because the redirect URI itself may be the thing that is wrong.
+   */
   function parseAuthorizationRequest(params: URLSearchParams): AuthorizationRequest {
+    if (params.get('client_id') !== options.clientId) {
+      throw new OAuthError(400, 'invalid_client', 'unknown client_id');
+    }
+    if (params.get('redirect_uri') !== options.redirectUri) {
+      throw new OAuthError(400, 'invalid_request', 'redirect_uri is not registered');
+    }
+    if (params.get('response_type') !== 'code') {
+      throw new OAuthError(400, 'unsupported_response_type', 'only response_type=code');
+    }
+    if (params.get('code_challenge_method') !== 'S256' || !params.get('code_challenge')) {
+      throw new OAuthError(400, 'invalid_request', 'PKCE with S256 is required');
+    }
+    const state = params.get('state');
+    const nonce = params.get('nonce');
+    if (!state) throw new OAuthError(400, 'invalid_request', 'state is required');
+    if (!nonce) throw new OAuthError(400, 'invalid_request', 'nonce is required');
     return {
-      redirectUri: params.get('redirect_uri') ?? '',
-      state: params.get('state') ?? '',
-      nonce: params.get('nonce') ?? '',
+      redirectUri: options.redirectUri,
+      state,
+      nonce,
       codeChallenge: params.get('code_challenge') ?? '',
       scope: params.get('scope') ?? '',
     };
@@ -166,7 +202,7 @@ export async function startFakeOidcProvider(
     const account = accounts.get(params.get('sub') ?? '');
     if (!account) throw new OAuthError(400, 'invalid_request', 'unknown account');
     const code = randomBytes(32).toString('base64url');
-    codes.set(code, { request, account });
+    codes.set(code, { request, account, expiresAt: now() + CODE_TTL_MS });
     const callback = new URL(request.redirectUri);
     callback.searchParams.set('code', code);
     callback.searchParams.set('state', request.state);
@@ -175,9 +211,20 @@ export async function startFakeOidcProvider(
 
   async function exchangeCode(req: IncomingMessage): Promise<Record<string, unknown>> {
     const form = new URLSearchParams(await readBody(req));
-    const pending = codes.get(form.get('code') ?? '');
-    if (!pending) throw new OAuthError(400, 'invalid_grant', 'unknown code');
+    authenticateClient(req, form);
+    const code = form.get('code') ?? '';
+    const pending = codes.get(code);
+    // Single-use: a code is spent by the first attempt to redeem it, successful or not.
+    codes.delete(code);
+    if (!pending) throw new OAuthError(400, 'invalid_grant', 'unknown or already used code');
+    if (now() >= pending.expiresAt) throw new OAuthError(400, 'invalid_grant', 'code expired');
     const { request, account } = pending;
+    if (form.get('redirect_uri') !== request.redirectUri) {
+      throw new OAuthError(400, 'invalid_grant', 'redirect_uri does not match the authorization');
+    }
+    if (s256(form.get('code_verifier') ?? '') !== request.codeChallenge) {
+      throw new OAuthError(400, 'invalid_grant', 'PKCE verification failed');
+    }
     const issuedAt = Math.floor(Date.now() / 1000);
     const idToken = signRs256Jwt(
       { alg: 'RS256', kid, typ: 'JWT' },
@@ -203,6 +250,24 @@ export async function startFakeOidcProvider(
       scope: request.scope,
       id_token: idToken,
     };
+  }
+
+  /** Accepts `client_secret_basic` or `client_secret_post`, like Google. */
+  function authenticateClient(req: IncomingMessage, form: URLSearchParams): void {
+    let id = form.get('client_id');
+    let secret = form.get('client_secret');
+    const authorization = req.headers.authorization;
+    if (authorization?.startsWith('Basic ')) {
+      const decoded = Buffer.from(authorization.slice('Basic '.length), 'base64').toString('utf8');
+      const separator = decoded.indexOf(':');
+      // RFC 6749 §2.3.1: both halves are form-urlencoded, so '+' means a space.
+      const formDecode = (v: string) => decodeURIComponent(v.replaceAll('+', ' '));
+      id = formDecode(decoded.slice(0, separator));
+      secret = formDecode(decoded.slice(separator + 1));
+    }
+    if (id !== options.clientId || secret !== options.clientSecret) {
+      throw new OAuthError(401, 'invalid_client', 'client authentication failed');
+    }
   }
 
   async function signIn(authorizationUrl: URL | string, sub: string): Promise<URL> {
@@ -278,4 +343,9 @@ function unescapeHtml(value: string): string {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** S256 code challenge for a PKCE verifier (RFC 7636). */
+function s256(verifier: string): string {
+  return createHash('sha256').update(verifier).digest('base64url');
 }
