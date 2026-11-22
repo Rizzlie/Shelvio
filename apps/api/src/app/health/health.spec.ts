@@ -1,24 +1,17 @@
-import { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import {
-  POSTGRES_STARTUP_TIMEOUT_MS,
-  UNREACHABLE_DATABASE_URL,
-  startPostgres,
-} from '../../testing/postgres-container';
+import { UNREACHABLE_DATABASE_URL, useTestDatabase } from '@shelvio/api/db/testing';
 import { TestApp, startTestApp, testConfig } from '../../testing/test-app';
 
 describe('GET /api/health', () => {
   describe('when the database answers', () => {
-    let postgres: StartedPostgreSqlContainer;
+    const database = useTestDatabase();
     let api: TestApp;
 
     beforeAll(async () => {
-      postgres = await startPostgres();
-      api = await startTestApp(testConfig({ DATABASE_URL: postgres.getConnectionUri() }));
-    }, POSTGRES_STARTUP_TIMEOUT_MS);
+      api = await startTestApp(testConfig({ DATABASE_URL: database.url }));
+    });
 
     afterAll(async () => {
       await api?.app.close();
-      await postgres?.stop();
     });
 
     it('returns 200', async () => {
@@ -30,7 +23,7 @@ describe('GET /api/health', () => {
 
     // Runs last in this block: it takes the database away.
     it('returns 503 and keeps serving once the database goes away', async () => {
-      await postgres.stop();
+      await database.container.stop();
 
       const first = await fetch(`${api.baseUrl}/api/health`);
       const second = await fetch(`${api.baseUrl}/api/health`);

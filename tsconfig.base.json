@@ -15,6 +15,8 @@
     "skipDefaultLibCheck": true,
     "paths": {
       "@shelvio/api/config": ["./libs/api/config/src/index.ts"],
+      "@shelvio/api/db": ["./libs/api/db/src/index.ts"],
+      "@shelvio/api/db/testing": ["./libs/api/db/src/testing/index.ts"],
       "@shelvio/shared/contracts": ["./libs/shared/contracts/src/index.ts"]
     }
   },
