@@ -15,7 +15,11 @@ module.exports = {
       compiler: 'tsc',
       main: './src/main.ts',
       tsConfig: './tsconfig.app.json',
-      assets: ['./src/assets'],
+      assets: [
+        './src/assets',
+        // The API applies these at startup; see `libs/api/db/README.md`.
+        { input: 'libs/api/db/migrations', glob: '**/*', output: 'migrations' },
+      ],
       optimization: false,
       outputHashing: 'none',
       generatePackageJson: true,
