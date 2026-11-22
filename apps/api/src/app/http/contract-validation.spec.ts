@@ -39,6 +39,7 @@ class BooksController {
   }
 }
 
+const APP_ORIGIN = 'http://localhost:4200';
 const BOOK_ID = '0196a3c2-7b7e-7cc1-9d4e-2a6f3b1c8d90';
 
 describe('request validation by contracts', () => {
@@ -55,7 +56,7 @@ describe('request validation by contracts', () => {
   function postBook(body: unknown): Promise<Response> {
     return fetch(`${api.baseUrl}/api/test/books`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { origin: APP_ORIGIN, 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
   }
@@ -95,7 +96,10 @@ describe('request validation by contracts', () => {
   });
 
   it('rejects a missing body with 400 request.invalid', async () => {
-    const response = await fetch(`${api.baseUrl}/api/test/books`, { method: 'POST' });
+    const response = await fetch(`${api.baseUrl}/api/test/books`, {
+      method: 'POST',
+      headers: { origin: APP_ORIGIN },
+    });
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: 'request.invalid' });
