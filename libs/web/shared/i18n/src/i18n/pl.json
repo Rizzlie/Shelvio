@@ -20,6 +20,12 @@
         "emailNotVerified": "Google nie potwierdził Twojego adresu e-mail. Potwierdź go i spróbuj ponownie."
       },
       "unknown": "Coś poszło nie tak. Spróbuj ponownie za chwilę."
+    },
+    "theme": {
+      "label": "Motyw",
+      "light": "Jasny",
+      "dark": "Ciemny",
+      "system": "Systemowy"
     }
   }
 }
