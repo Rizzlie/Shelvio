@@ -13,11 +13,13 @@ export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 export interface AccountHooks {
   /** Whether a pending Invitation for this lowercased email opens the admission gate. */
   isInvited(email: string): Promise<boolean>;
-  /** Runs on every successful sign-in, after the profile refresh (converts Invitations into Shares). */
+  /**
+   * Runs on every successful sign-in, after the profile refresh (ticket 11), with the signed-in
+   * user (converts Invitations into Shares).
+   */
   afterSignIn(user: User): Promise<void>;
   /** Lines for the operator's account-deletion summary (owned collections, item counts, …). */
   summariseAccount(userId: string): Promise<string[]>;
   /** Removes what the user owns, and their Shares, inside Identity's deletion transaction. */
   deleteAccountData(userId: string, tx: Transaction): Promise<void>;
 }
-

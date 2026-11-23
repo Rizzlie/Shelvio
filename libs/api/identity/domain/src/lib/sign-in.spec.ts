@@ -157,10 +157,7 @@ describe('signing in with Google', () => {
 
     it('starts every attempt with its own state and nonce', async () => {
       const service = identity();
-      const [first, second] = await Promise.all([
-        service.beginSignIn({}),
-        service.beginSignIn({}),
-      ]);
+      const [first, second] = await Promise.all([service.beginSignIn({}), service.beginSignIn({})]);
 
       expect(first.searchParams.get('state')).not.toBe(second.searchParams.get('state'));
       expect(first.searchParams.get('nonce')).not.toBe(second.searchParams.get('nonce'));
@@ -270,14 +267,14 @@ describe('signing in with Google', () => {
       await rejected(service.completeSignIn(callback));
     });
 
-    it('is refused when it carries another attempt’s state (PKCE verifier mismatch)', async () => {
+    it('is refused when the code was issued for another PKCE challenge', async () => {
       const service = identity();
-      const mine = await service.beginSignIn({});
+      const url = await service.beginSignIn({});
       const other = await service.beginSignIn({});
-      const callback = await callbackFor(mine, dora);
-      callback.set('state', other.searchParams.get('state') ?? '');
+      // Same state and nonce, so only the PKCE verifier can fail.
+      url.searchParams.set('code_challenge', other.searchParams.get('code_challenge') ?? '');
 
-      await rejected(service.completeSignIn(callback));
+      await rejected(service.completeSignIn(await callbackFor(url, dora)));
     });
 
     it('is refused when the ID token carries another nonce', async () => {

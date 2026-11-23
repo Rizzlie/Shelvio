@@ -48,6 +48,12 @@ const SIGN_IN_PROTOCOL_ERRORS = [
 /** Every way a callback can fail to prove a fresh, genuine Google sign-in: start again. */
 const signInFailed = () => new Unauthenticated('auth.unauthenticated');
 
+/** An optional profile claim of the ID token, if Google sent it as a string. */
+const stringClaim = (claims: client.IDToken, name: 'name' | 'picture'): string | null => {
+  const value = claims[name];
+  return typeof value === 'string' ? value : null;
+};
+
 const toUser = (row: typeof users.$inferSelect): User => ({
   id: row.id,
   // Live users always have an email; only tombstones (never returned here) lack one.
@@ -167,16 +173,15 @@ export class Identity {
    */
   private async admit(claims: client.IDToken, googleEmail: string): Promise<User> {
     const email = googleEmail.toLowerCase();
-    const admitted =
-      this.allowlist.has(email) || (await this.deps.accountHooks.isInvited(email));
+    const admitted = this.allowlist.has(email) || (await this.deps.accountHooks.isInvited(email));
     if (!admitted) throw new Forbidden('auth.inviteOnly');
     const [row] = await this.deps.db
       .insert(users)
       .values({
         googleSub: claims.sub,
         email,
-        name: typeof claims['name'] === 'string' ? claims['name'] : null,
-        avatarUrl: typeof claims['picture'] === 'string' ? claims['picture'] : null,
+        name: stringClaim(claims, 'name'),
+        avatarUrl: stringClaim(claims, 'picture'),
       })
       .returning();
     return toUser(row);
