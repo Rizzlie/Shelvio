@@ -51,17 +51,22 @@ export interface TestAppOptions {
   logStream?: Writable;
   /** Test-only controllers mounted next to the real ones, behind the same app-wide setup. */
   controllers?: Type[];
+  /** Replacements for the app's own providers, such as Google as the fake OIDC provider. */
+  providers?: { provide: unknown; useValue: unknown }[];
 }
 
 /** Starts the real API module in-process on a random loopback port. */
 export async function startTestApp(
   config: Config,
-  { logStream, controllers = [] }: TestAppOptions = {},
+  { logStream, controllers = [], providers = [] }: TestAppOptions = {},
 ): Promise<TestApp> {
-  const moduleRef = await Test.createTestingModule({
+  const builder = Test.createTestingModule({
     imports: [AppModule.register(config, logStream)],
     controllers,
-  }).compile();
+  });
+  for (const { provide, useValue } of providers)
+    builder.overrideProvider(provide).useValue(useValue);
+  const moduleRef = await builder.compile();
   const app = configureApp(moduleRef.createNestApplication({ bufferLogs: true }));
   await app.listen(0, '127.0.0.1');
   return { app, baseUrl: await app.getUrl() };
