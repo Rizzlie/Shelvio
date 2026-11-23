@@ -27,8 +27,12 @@ export const users = pgTable(
     deletedAt: timestamp({ withTimezone: true }),
   },
   (t) => [
-    uniqueIndex('users_google_sub_key').on(t.googleSub).where(sql`${t.deletedAt} IS NULL`),
-    uniqueIndex('users_email_key').on(t.email).where(sql`${t.deletedAt} IS NULL`),
+    uniqueIndex('users_google_sub_key')
+      .on(t.googleSub)
+      .where(sql`${t.deletedAt} IS NULL`),
+    uniqueIndex('users_email_key')
+      .on(t.email)
+      .where(sql`${t.deletedAt} IS NULL`),
     check('users_email_lowercase_check', sql`${t.email} = lower(${t.email})`),
   ],
 );
@@ -45,6 +49,7 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id),
     tokenHash: text().notNull(),
+    // No `updated_at`: a session is only ever extended, which `last_refreshed_at` records.
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp({ withTimezone: true }).notNull(),
     lastRefreshedAt: timestamp({ withTimezone: true }).notNull(),
