@@ -8,6 +8,8 @@
 
 An inline script in `apps/web/src/index.html` applies the stored mode before the first paint, so public screens don't flash the other mode while Angular loads. It repeats the storage key and the attribute name; `apps/web/src/index.spec.ts` runs it against `themeModeStorageKey` and `themeModeAttribute` to keep them in step.
 
+The control is `ThemeSwitch` in `@shelvio/web/shared/ui`; bind it with `<app-theme-switch [mode]="store.mode()" (modeChange)="store.select($event)" />`.
+
 ## `provideTheme()`
 
 Add it to the app config. It makes `<mat-icon>` draw Material Symbols Outlined (loaded from Google Fonts in `index.html`).
