@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withNavigationErrorHandler } from '@angular/router';
+import { provideDateFormat } from '@shelvio/web/shared/formatting';
 import { provideI18n } from '@shelvio/web/shared/i18n';
 import { provideTheme } from '@shelvio/web/shared/theme';
 import { appRoutes } from './app.routes';
@@ -14,6 +15,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes, withNavigationErrorHandler(notFoundOnPageLoad)),
     provideHttpClient(),
     provideI18n(),
+    provideDateFormat(),
     provideTheme(),
   ],
 };

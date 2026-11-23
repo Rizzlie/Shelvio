@@ -1,0 +1,10 @@
+{
+  "name": "web-shared-formatting",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/shared/formatting/src",
+  "prefix": "app",
+  "projectType": "library",
+  "tags": ["scope:web", "type:util"],
+  "// targets": "to see all targets run: nx show project web-shared-formatting --web",
+  "targets": {}
+}
