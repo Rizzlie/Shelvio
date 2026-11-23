@@ -1,39 +1,70 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
+// "Warm Editorial Archival" on Angular Material 3 (spec "Theme",
+// .scratch/shelvio-mvp/ui/theme-decisions.md).
+@use 'sass:map';
 @use '@angular/material' as mat;
+@use 'theme-colors' as palettes;
+
+$_neutral: map.get(palettes.$primary-palette, neutral);
+$_neutral-variant: map.get(palettes.$primary-palette, neutral-variant);
 
 html {
   height: 100%;
+  // Follows the system light/dark mode; every `light-dark()` token below switches with it.
+  color-scheme: light dark;
+
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: palettes.$primary-palette,
+        tertiary: palettes.$tertiary-palette,
+        theme-type: color-scheme,
       ),
       typography: Roboto,
       density: 0,
     )
   );
+
+  // Only surface and background tokens are set by hand, to the exact paper and warm-charcoal
+  // tones; everything else (the dark primary included) comes from the generated palettes.
+  @include mat.theme-overrides(
+    (
+      background: light-dark(#fbf9f5, #171513),
+      // Page on `background`; cards, menus and dialogs on `surface` (and its low container).
+      surface: light-dark(#ffffff, #1c1a17),
+      surface-container-low: light-dark(#ffffff, #1c1a17),
+      surface-container: light-dark(#f6f3eb, #24211d),
+      surface-container-high: light-dark(map.get($_neutral, 92), #2d2a25),
+      on-background: light-dark(#2c2a27, #faf5ef),
+      on-surface: light-dark(#2c2a27, #faf5ef),
+      on-surface-variant: light-dark(#68645e, map.get($_neutral-variant, 80)),
+      outline-variant: light-dark(#e4e0d7, map.get($_neutral-variant, 30)),
+    )
+  );
+
+  // Amber for soft warnings such as the duplicate notice (M3 has no warning role).
+  --shelvio-warning: light-dark(#8a5300, #f2b867);
+
+  // Visible focus rings on Material components and on everything else.
+  @include mat.strong-focus-indicators(
+    (
+      border-color: var(--mat-sys-primary),
+    )
+  );
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  background-color: var(--mat-sys-background);
+  color: var(--mat-sys-on-background);
   font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
   margin: 0;
   height: 100%;
 }
-/* You can add global styles to this file, and also import other style files */
+
+:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.mat-focus-indicator:focus-visible {
+  outline: none;
+}
