@@ -22,10 +22,23 @@
 $_neutral: map.get(palettes.$primary-palette, neutral);
 $_neutral-variant: map.get(palettes.$primary-palette, neutral-variant);
 
+// Mode: Systemowy by default; `data-theme-mode` (set before the first paint by index.html and
+// kept in step by ThemeModeStore) pins Jasny or Ciemny. Every `light-dark()` token follows it.
+$_color-schemes: (
+  light: light,
+  dark: dark,
+  system: light dark,
+);
+
 html {
   height: 100%;
-  // Follows the system light/dark mode; every `light-dark()` token below switches with it.
   color-scheme: light dark;
+
+  @each $mode, $scheme in $_color-schemes {
+    &[data-theme-mode='#{$mode}'] {
+      color-scheme: $scheme;
+    }
+  }
 
   @include mat.theme(
     (

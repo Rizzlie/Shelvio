@@ -6,6 +6,16 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
+    <script>
+      // Applies the stored theme mode before the first paint, so pre-sign-in screens follow it
+      // too. Key and attribute mirror ThemeModeStore in libs/web/shared/theme (index.spec.ts).
+      try {
+        var mode = localStorage.getItem('shelvio.themeMode');
+        if (mode === 'light' || mode === 'dark' || mode === 'system') {
+          document.documentElement.setAttribute('data-theme-mode', mode);
+        }
+      } catch (blocked) {}
+    </script>
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
