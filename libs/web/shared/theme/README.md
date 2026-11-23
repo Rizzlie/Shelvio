@@ -1,6 +1,12 @@
 # web-shared-theme
 
-`@shelvio/web/shared/theme` (`scope:web`, `type:util`): the theme's runtime half. The palettes, fonts and tokens are in `apps/web/src/styles.scss`.
+`@shelvio/web/shared/theme` (`scope:web`, `type:util`): the light/dark mode and the theme's runtime half. The palettes, fonts and tokens are in `apps/web/src/styles.scss`.
+
+## Mode
+
+`ThemeModeStore` (NgRx SignalStore, root) holds `mode()`: `'light'`, `'dark'` or `'system'` (Jasny / Ciemny / Systemowy), default `'system'`. `select(mode)` sets `data-theme-mode` on `<html>` and stores the choice in `localStorage` under `shelvio.themeMode`. When storage is blocked, the store starts on Systemowy and switching still works for the visit. `styles.scss` maps the attribute to `color-scheme`, which every `light-dark()` token follows.
+
+An inline script in `apps/web/src/index.html` applies the stored mode before the first paint, so public screens don't flash the other mode while Angular loads. It repeats the storage key and the attribute name; `apps/web/src/index.spec.ts` runs it against `themeModeStorageKey` and `themeModeAttribute` to keep them in step.
 
 ## `provideTheme()`
 
