@@ -1,8 +1,23 @@
 // "Warm Editorial Archival" on Angular Material 3 (spec "Theme",
 // .scratch/shelvio-mvp/ui/theme-decisions.md).
 @use 'sass:map';
+@use 'sass:string';
 @use '@angular/material' as mat;
 @use 'theme-colors' as palettes;
+// Self-hosted fonts: latin plus latin-ext (Polish letters; the browser fetches a subset only
+// when a page uses its characters), in the weights the M3 type scale uses.
+@use '@fontsource/newsreader/latin-400' as newsreader-latin-400;
+@use '@fontsource/newsreader/latin-500' as newsreader-latin-500;
+@use '@fontsource/newsreader/latin-700' as newsreader-latin-700;
+@use '@fontsource/newsreader/latin-ext-400' as newsreader-latin-ext-400;
+@use '@fontsource/newsreader/latin-ext-500' as newsreader-latin-ext-500;
+@use '@fontsource/newsreader/latin-ext-700' as newsreader-latin-ext-700;
+@use '@fontsource/plus-jakarta-sans/latin-400' as plus-jakarta-sans-latin-400;
+@use '@fontsource/plus-jakarta-sans/latin-500' as plus-jakarta-sans-latin-500;
+@use '@fontsource/plus-jakarta-sans/latin-700' as plus-jakarta-sans-latin-700;
+@use '@fontsource/plus-jakarta-sans/latin-ext-400' as plus-jakarta-sans-latin-ext-400;
+@use '@fontsource/plus-jakarta-sans/latin-ext-500' as plus-jakarta-sans-latin-ext-500;
+@use '@fontsource/plus-jakarta-sans/latin-ext-700' as plus-jakarta-sans-latin-ext-700;
 
 $_neutral: map.get(palettes.$primary-palette, neutral);
 $_neutral-variant: map.get(palettes.$primary-palette, neutral-variant);
@@ -19,7 +34,13 @@ html {
         tertiary: palettes.$tertiary-palette,
         theme-type: color-scheme,
       ),
-      typography: Roboto,
+      typography: (
+        brand-family: 'Newsreader, serif',
+        plain-family: 'Plus Jakarta Sans, sans-serif',
+        regular-weight: 400,
+        medium-weight: 500,
+        bold-weight: 700,
+      ),
       density: 0,
     )
   );
@@ -38,6 +59,12 @@ html {
       on-surface: light-dark(#2c2a27, #faf5ef),
       on-surface-variant: light-dark(#68645e, map.get($_neutral-variant, 80)),
       outline-variant: light-dark(#e4e0d7, map.get($_neutral-variant, 30)),
+      // M3 sets title-large in the brand face; Shelvio keeps every title in Plus Jakarta Sans.
+      title-large-font: var(--mat-sys-title-medium-font),
+      title-large: string.unquote(
+          'var(--mat-sys-title-large-weight) var(--mat-sys-title-large-size) / ' +
+            'var(--mat-sys-title-large-line-height) var(--mat-sys-title-large-font)'
+        ),
     )
   );
 
