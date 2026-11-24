@@ -82,6 +82,7 @@
     "@ngrx/signals": "22.0.1",
     "date-fns": "4.4.0",
     "drizzle-orm": "0.45.4",
+    "isbn3": "2.0.13",
     "nestjs-pino": "5.3.2",
     "nestjs-zod": "5.6.0",
     "pg": "8.23.1",
