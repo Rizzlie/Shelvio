@@ -1,0 +1,10 @@
+{
+  "signIn": {
+    "wordmark": "Shelvio",
+    "tagline": "Twoje książki i winyle, razem ze znajomymi.",
+    "google": "Zaloguj przez Google"
+  },
+  "noAccess": {
+    "signOut": "Wyloguj"
+  }
+}

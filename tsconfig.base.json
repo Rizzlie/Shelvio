@@ -29,7 +29,8 @@
       "@shelvio/web/shared/formatting/isbn": ["./libs/web/shared/formatting/src/isbn/index.ts"],
       "@shelvio/api/identity/domain": ["./libs/api/identity/domain/src/index.ts"],
       "@shelvio/api/identity/feature": ["./libs/api/identity/feature/src/index.ts"],
-      "@shelvio/web/identity/data-access": ["./libs/web/identity/data-access/src/index.ts"]
+      "@shelvio/web/identity/data-access": ["./libs/web/identity/data-access/src/index.ts"],
+      "@shelvio/web/identity/feature": ["./libs/web/identity/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
