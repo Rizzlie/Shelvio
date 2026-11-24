@@ -12,7 +12,7 @@ import * as client from 'openid-client';
 import type { AccountHooks } from './account-hooks';
 import type { Clock } from './clock';
 import type { GoogleOidc } from './google-oidc';
-import { Identity } from './identity';
+import { Identity, type IdentityLogger } from './identity';
 import type { User } from './user';
 
 const clientId = 'shelvio-test.apps.googleusercontent.com';
@@ -38,6 +38,12 @@ const fela = account('fela');
 const outsider = account('outsider');
 const unverified = account('unverified', { emailVerified: false });
 const invited = account('invited', { email: 'Invited@example.test' });
+/** Returning people whose Google profile changes between sign-ins. */
+const gosia = account('gosia');
+const hela = account('hela');
+const ida = account('ida');
+const jola = account('jola');
+const kasia = account('kasia');
 
 const ALLOWLIST = [
   'ala@example.test',
@@ -47,6 +53,11 @@ const ALLOWLIST = [
   'ewa@example.test',
   'fela@example.test',
   'unverified@example.test',
+  'gosia@example.test',
+  'hela@example.test',
+  'ida@example.test',
+  'jola@example.test',
+  'kasia@example.test',
 ];
 
 /** Time stands still unless a test moves it. */
@@ -83,6 +94,14 @@ class RecordingHooks implements AccountHooks {
   }
 }
 
+/** Keeps what Identity warns about, as the operator would read it in the logs. */
+class RecordingLogger implements IdentityLogger {
+  readonly warnings: string[] = [];
+  warn(message: string): void {
+    this.warnings.push(message);
+  }
+}
+
 describe('signing in with Google', () => {
   const database = useTestDatabase();
   let provider: FakeOidcProvider;
@@ -93,7 +112,22 @@ describe('signing in with Google', () => {
       clientId,
       clientSecret,
       redirectUri,
-      accounts: [ala, bea, cela, dora, ewa, fela, outsider, unverified, invited],
+      accounts: [
+        ala,
+        bea,
+        cela,
+        dora,
+        ewa,
+        fela,
+        outsider,
+        unverified,
+        invited,
+        gosia,
+        hela,
+        ida,
+        jola,
+        kasia,
+      ],
     });
     google = {
       redirectUri,
@@ -110,13 +144,21 @@ describe('signing in with Google', () => {
     await provider?.stop();
   });
 
-  function identity(options: { hooks?: AccountHooks; clock?: Clock } = {}) {
+  function identity(
+    options: {
+      hooks?: AccountHooks;
+      clock?: Clock;
+      allowlist?: readonly string[];
+      logger?: IdentityLogger;
+    } = {},
+  ) {
     return new Identity({
       db: database.db,
       google,
-      signupAllowlist: ALLOWLIST,
+      signupAllowlist: options.allowlist ?? ALLOWLIST,
       accountHooks: options.hooks ?? new RecordingHooks(),
       clock: options.clock ?? new FakeClock(),
+      logger: options.logger ?? new RecordingLogger(),
     });
   }
 
@@ -234,6 +276,69 @@ describe('signing in with Google', () => {
 
       expect(second.user.id).toBe(first.user.id);
       expect(await storedUsers('bea@example.test')).toHaveLength(1);
+    });
+  });
+
+  describe('returning sign-in', () => {
+    it('refreshes name, avatar and the lowercased email from Google on every sign-in', async () => {
+      const service = identity();
+      const first = await signIn(gosia, service);
+      const changes = {
+        email: 'Malgorzata@Example.TEST',
+        name: 'Małgorzata Nowa',
+        picture: 'https://example.test/avatars/malgorzata.png',
+      };
+      provider.updateAccount(gosia.sub, changes);
+
+      const { user, session } = await signIn(gosia, service);
+
+      const refreshed = {
+        id: first.user.id,
+        email: 'malgorzata@example.test',
+        name: changes.name,
+        avatarUrl: changes.picture,
+      };
+      expect(user).toEqual(refreshed);
+      expect(await service.getMe(await service.resolveSession(session.token))).toEqual(refreshed);
+    });
+
+    it('signs in someone no longer on the allowlist, without asking about Invitations', async () => {
+      const { user } = await signIn(hela);
+      const hooks = new RecordingHooks();
+
+      const again = await signIn(hela, identity({ allowlist: [], hooks }));
+
+      expect(again.user.id).toBe(user.id);
+      expect(hooks.invitationChecks).toEqual([]);
+    });
+
+    it('keeps the old email when another account holds the new one, and warns without tokens', async () => {
+      const holder = await signIn(jola);
+      const { user } = await signIn(ida);
+      const logger = new RecordingLogger();
+      provider.updateAccount(ida.sub, { email: 'JOLA@example.test', name: 'Ida Zmieniona' });
+
+      const again = await signIn(ida, identity({ logger }));
+
+      expect(again.user).toEqual({ ...user, name: 'Ida Zmieniona' });
+      expect(await storedUsers('jola@example.test')).toEqual([
+        expect.objectContaining({ id: holder.user.id }),
+      ]);
+      expect(logger.warnings).toEqual([expect.stringContaining(user.id)]);
+      for (const token of [again.session.token, holder.session.token]) {
+        expect(logger.warnings.join(' ')).not.toContain(token);
+      }
+    });
+
+    it('tells afterSignIn about the refreshed person', async () => {
+      await signIn(kasia);
+      provider.updateAccount(kasia.sub, { name: 'Katarzyna Testowa' });
+      const hooks = new RecordingHooks();
+
+      const { user } = await signIn(kasia, identity({ hooks }));
+
+      expect(hooks.signedIn).toEqual([user]);
+      expect(user.name).toBe('Katarzyna Testowa');
     });
   });
 

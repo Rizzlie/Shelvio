@@ -14,8 +14,8 @@ export interface AccountHooks {
   /** Whether a pending Invitation for this lowercased email opens the admission gate. */
   isInvited(email: string): Promise<boolean>;
   /**
-   * Runs on every successful sign-in, after the profile refresh (ticket 11), with the signed-in
-   * user (converts Invitations into Shares).
+   * Runs on every successful sign-in, after the profile refresh, with the signed-in
+   * (refreshed) user (converts Invitations into Shares).
    */
   afterSignIn(user: User): Promise<void>;
   /** Lines for the operator's account-deletion summary (owned collections, item counts, …). */

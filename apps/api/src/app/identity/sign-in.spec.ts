@@ -6,7 +6,7 @@ import {
 } from '@shelvio/api/testing/fake-oidc';
 import type { GoogleOidc } from '@shelvio/api/identity/domain';
 import * as client from 'openid-client';
-import { TestApp, startTestApp, testConfig } from '../../testing/test-app';
+import { LogCapture, TestApp, startTestApp, testConfig } from '../../testing/test-app';
 import { GOOGLE_OIDC } from './identity.wiring';
 
 const APP_ORIGIN = 'https://app.shelvio.test';
@@ -21,6 +21,13 @@ const owner: FakeOidcAccount = {
   emailVerified: true,
   name: 'Ola Właścicielka',
   picture: 'https://example.test/avatars/owner.png',
+};
+const contributor: FakeOidcAccount = {
+  sub: '100000000000000000002',
+  email: 'contributor@example.test',
+  emailVerified: true,
+  name: 'Kasia Współpracowniczka',
+  picture: 'https://example.test/avatars/contributor.png',
 };
 const outsider: FakeOidcAccount = {
   sub: '100000000000000000005',
@@ -57,13 +64,14 @@ describe('signing in over HTTP', () => {
   const database = useTestDatabase();
   let provider: FakeOidcProvider;
   let api: TestApp;
+  let logs: LogCapture;
 
   beforeAll(async () => {
     provider = await startFakeOidcProvider({
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
       redirectUri: GOOGLE_REDIRECT_URI,
-      accounts: [owner, outsider, unverified],
+      accounts: [owner, contributor, outsider, unverified],
     });
     const fakeGoogle: GoogleOidc = {
       redirectUri: GOOGLE_REDIRECT_URI,
@@ -77,6 +85,7 @@ describe('signing in over HTTP', () => {
         return configuration;
       },
     };
+    logs = new LogCapture();
     api = await startTestApp(
       testConfig({
         DATABASE_URL: database.url,
@@ -84,9 +93,10 @@ describe('signing in over HTTP', () => {
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
         GOOGLE_REDIRECT_URI,
-        SIGNUP_ALLOWLIST: owner.email,
+        SIGNUP_ALLOWLIST: `${owner.email},${contributor.email}`,
+        LOG_LEVEL: 'warn',
       }),
-      { providers: [{ provide: GOOGLE_OIDC, useValue: fakeGoogle }] },
+      { providers: [{ provide: GOOGLE_OIDC, useValue: fakeGoogle }], logStream: logs },
     );
   });
 
@@ -178,6 +188,29 @@ describe('signing in over HTTP', () => {
       expect(response.status).toBe(302);
       expect(response.headers.get('location')).toBe(`${APP_ORIGIN}/`);
       expect(sessionCookies(response)).toEqual([]);
+    });
+  });
+
+  describe('a returning person whose new Google email belongs to another account', () => {
+    it('is signed in with their old email, and the operator gets a warning without tokens', async () => {
+      await signInAs(owner);
+      const [first] = sessionCookies(await signInAs(contributor));
+      const { id } = (await (await getMe(`__Host-session=${first.value}`)).json()) as {
+        id: string;
+      };
+      provider.updateAccount(contributor.sub, { email: owner.email });
+
+      const [cookie] = sessionCookies(await signInAs(contributor));
+
+      expect(await (await getMe(`__Host-session=${cookie.value}`)).json()).toMatchObject({
+        id,
+        email: contributor.email,
+      });
+      expect(logs.entries).toContainEqual(
+        expect.objectContaining({ level: 40, msg: expect.stringContaining(id) }),
+      );
+      expect(logs.text).not.toContain(cookie.value);
+      expect(logs.text).not.toContain(first.value);
     });
   });
 

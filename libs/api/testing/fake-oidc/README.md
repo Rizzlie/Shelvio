@@ -26,6 +26,7 @@ client.allowInsecureRequests(config); // the fake speaks plain HTTP
 const callbackUrl = await provider.signIn(authorizationUrl, sub); // what a click on the account does
 // ...then client.authorizationCodeGrant(config, callbackUrl, { pkceCodeVerifier, expectedState, expectedNonce })
 
+provider.updateAccount(sub, { email, name, picture }); // the person changed their Google profile; later sign-ins carry it
 await provider.stop();
 ```
 

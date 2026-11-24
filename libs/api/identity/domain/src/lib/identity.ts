@@ -10,6 +10,11 @@ import { safeReturnTo } from './return-to';
 import { hashSessionToken, newSessionToken } from './session-token';
 import type { User } from './user';
 
+/** Where Identity reports what the operator should know about; never given tokens or secrets. */
+export interface IdentityLogger {
+  warn(message: string): void;
+}
+
 export interface IdentityDependencies {
   db: Database;
   google: GoogleOidc;
@@ -17,6 +22,7 @@ export interface IdentityDependencies {
   signupAllowlist: readonly string[];
   accountHooks: AccountHooks;
   clock: Clock;
+  logger: IdentityLogger;
 }
 
 export interface SignedIn {
@@ -63,6 +69,12 @@ const stringClaim = (claims: client.IDToken, name: 'name' | 'picture'): string |
   const value = claims[name];
   return typeof value === 'string' ? value : null;
 };
+
+/** The profile Google keeps for a person, as Shelvio stores it: refreshed on every sign-in. */
+const googleProfile = (claims: client.IDToken) => ({
+  name: stringClaim(claims, 'name'),
+  avatarUrl: stringClaim(claims, 'picture'),
+});
 
 const toUser = (row: typeof users.$inferSelect): User => ({
   id: row.id,
@@ -120,10 +132,12 @@ export class Identity {
   async completeSignIn(callbackParams: URLSearchParams): Promise<SignedIn> {
     const attempt = await this.consumeAttempt(callbackParams.get('state'));
     const claims = await this.exchangeCode(attempt, callbackParams);
-    if (claims.email_verified !== true || typeof claims.email !== 'string') {
+    const { email, email_verified } = claims;
+    if (email_verified !== true || typeof email !== 'string') {
       throw new Forbidden('auth.emailNotVerified');
     }
-    const user = (await this.findBySub(claims.sub)) ?? (await this.admit(claims, claims.email));
+    const known = await this.findBySub(claims.sub);
+    const user = known ? await this.refresh(known, claims, email) : await this.admit(claims, email);
     await this.deps.accountHooks.afterSignIn(user);
     return { user, returnTo: attempt.returnTo, session: await this.createSession(user) };
   }
@@ -220,6 +234,35 @@ export class Identity {
   }
 
   /**
+   * Brings a returning person's profile up to date with Google: name and avatar always, and the
+   * email unless another account already holds it. Then the old email stays, the sign-in goes on,
+   * and the operator gets a warning, so a rare collision never locks anyone out.
+   */
+  private async refresh(user: User, claims: client.IDToken, googleEmail: string): Promise<User> {
+    const email = googleEmail.toLowerCase();
+    const emailTaken = email !== user.email && (await this.isEmailTaken(email));
+    if (emailTaken) {
+      this.deps.logger.warn(
+        `User ${user.id} kept their old email: their new Google email belongs to another account`,
+      );
+    }
+    const [row] = await this.deps.db
+      .update(users)
+      .set({ ...googleProfile(claims), email: emailTaken ? user.email : email })
+      .where(eq(users.id, user.id))
+      .returning();
+    return toUser(row);
+  }
+
+  private async isEmailTaken(email: string): Promise<boolean> {
+    const [holder] = await this.deps.db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.email, email), isNull(users.deletedAt)));
+    return holder !== undefined;
+  }
+
+  /**
    * The admission gate for someone Shelvio doesn't know yet: the allowlist or an Invitation,
    * otherwise `auth.inviteOnly` and no account.
    */
@@ -232,8 +275,7 @@ export class Identity {
       .values({
         googleSub: claims.sub,
         email,
-        name: stringClaim(claims, 'name'),
-        avatarUrl: stringClaim(claims, 'picture'),
+        ...googleProfile(claims),
       })
       .returning();
     return toUser(row);

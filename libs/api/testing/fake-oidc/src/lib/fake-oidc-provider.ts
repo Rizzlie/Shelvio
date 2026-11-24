@@ -60,6 +60,11 @@ export interface FakeOidcProvider {
    * this `sub` and returns the callback URL the provider redirects to (with `code` and `state`).
    */
   signIn(authorizationUrl: URL | string, sub: string): Promise<URL>;
+  /**
+   * Changes an account's Google profile, as when the person renames themselves or switches email
+   * in Google: later sign-ins carry the new claims under the same `sub`.
+   */
+  updateAccount(sub: string, changes: Partial<Omit<FakeOidcAccount, 'sub'>>): void;
   /** Stops listening and drops open connections. */
   stop(): Promise<void>;
 }
@@ -96,7 +101,7 @@ export async function startFakeOidcProvider(
   options: FakeOidcProviderOptions,
 ): Promise<FakeOidcProvider> {
   const now = options.now ?? Date.now;
-  const accounts = new Map(options.accounts.map((a) => [a.sub, a]));
+  const accounts = new Map(options.accounts.map((a) => [a.sub, { ...a }]));
   const codes = new Map<string, PendingCode>();
 
   const kid = randomUUID();
@@ -183,7 +188,7 @@ export async function startFakeOidcProvider(
 
   function renderAccountPicker(res: ServerResponse, params: URLSearchParams): void {
     parseAuthorizationRequest(params);
-    const items = options.accounts
+    const items = [...accounts.values()]
       .map((account) => {
         const approveParams = new URLSearchParams(params);
         approveParams.set('sub', account.sub);
@@ -286,6 +291,12 @@ export async function startFakeOidcProvider(
     return new URL(location);
   }
 
+  function updateAccount(sub: string, changes: Partial<Omit<FakeOidcAccount, 'sub'>>): void {
+    const account = accounts.get(sub);
+    if (!account) throw new Error(`No account with sub ${sub}`);
+    accounts.set(sub, { ...account, ...changes });
+  }
+
   async function stop(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
@@ -293,7 +304,7 @@ export async function startFakeOidcProvider(
     });
   }
 
-  return { url, metadata, signIn, stop };
+  return { url, metadata, signIn, updateAccount, stop };
 }
 
 /** A compact JWS (RFC 7515) signed with RSASSA-PKCS1-v1_5 SHA-256, i.e. JWT alg `RS256`. */
