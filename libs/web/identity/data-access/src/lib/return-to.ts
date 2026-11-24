@@ -1,7 +1,7 @@
 import { NO_ACCESS_PATH } from '@shelvio/shared/contracts';
 
 /** The public sign-in screen; `?returnTo=` carries the page to come back to. */
-export const SIGN_IN_PATH = '/logowanie';
+export const SIGN_IN_PATH = '/login';
 
 /** Where a sign-in lands when the requested page can't or shouldn't be returned to. */
 export const START_PAGE = '/';

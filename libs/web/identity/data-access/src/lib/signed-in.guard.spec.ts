@@ -31,7 +31,7 @@ describe('signedIn', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'logowanie', component: Page },
+          { path: 'login', component: Page },
           {
             path: '',
             canActivate: [signedIn],
@@ -67,14 +67,12 @@ describe('signedIn', () => {
       me.flush({ code: 'auth.unauthenticated' }, unauthenticated),
     );
 
-    expect(TestBed.inject(Router).url).toBe(
-      '/logowanie?returnTo=%2Fkolekcje%2F123%3Fwidok%3Dlista',
-    );
+    expect(TestBed.inject(Router).url).toBe('/login?returnTo=%2Fkolekcje%2F123%3Fwidok%3Dlista');
   });
 
   it('asks the API only once per visit', async () => {
     await open('/kolekcje/123', (me) => me.flush(ada));
-    await harness.navigateByUrl('/logowanie');
+    await harness.navigateByUrl('/login');
 
     await harness.navigateByUrl('/kolekcje/456');
 

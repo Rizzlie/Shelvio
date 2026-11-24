@@ -34,7 +34,7 @@ describe('signInOnUnauthenticated', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
-          { path: 'logowanie', component: Page },
+          { path: 'login', component: Page },
           {
             path: '',
             canActivate: [signedIn],
@@ -72,7 +72,7 @@ describe('signInOnUnauthenticated', () => {
     api.expectOne('/api/collections/123').flush(...sessionExpired);
 
     await expect(request).rejects.toMatchObject({ status: 401 });
-    await vi.waitFor(() => expect(router.url).toBe('/logowanie?returnTo=%2Fkolekcje%2F123'));
+    await vi.waitFor(() => expect(router.url).toBe('/login?returnTo=%2Fkolekcje%2F123'));
     expect(TestBed.inject(CurrentUserStore).me()).toBeNull();
   });
 
@@ -83,7 +83,7 @@ describe('signInOnUnauthenticated', () => {
     await vi.waitFor(() => api.expectOne('/api/items/7').flush(...sessionExpired));
     await navigation;
 
-    await vi.waitFor(() => expect(router.url).toBe('/logowanie?returnTo=%2Fpozycje%2F7'));
+    await vi.waitFor(() => expect(router.url).toBe('/login?returnTo=%2Fpozycje%2F7'));
   });
 
   it('leaves other failures to the caller', async () => {
@@ -101,6 +101,6 @@ describe('signInOnUnauthenticated', () => {
     await vi.waitFor(() => api.expectOne('/api/me').flush(...sessionExpired));
     await navigation;
 
-    expect(router.url).toBe('/logowanie?returnTo=%2Fkolekcje%2F123');
+    expect(router.url).toBe('/login?returnTo=%2Fkolekcje%2F123');
   });
 });
