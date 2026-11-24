@@ -19,7 +19,7 @@ describe('returnToOf', () => {
     expect(returnToOf(value)).toBe('/');
   });
 
-  it.each(['/login', '/login?returnTo=%2Fkolekcje', '/brak-dostepu?code=auth.inviteOnly'])(
+  it.each(['/login', '/login?returnTo=%2Fkolekcje', '/no-access?code=auth.inviteOnly'])(
     'never returns to a sign-in screen (%s), which would loop',
     (path) => {
       expect(returnToOf(path)).toBe('/');

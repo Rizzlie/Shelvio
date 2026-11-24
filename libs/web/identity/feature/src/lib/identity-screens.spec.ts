@@ -10,7 +10,7 @@ async function open(url: string) {
       provideRouter(
         [
           { path: 'login', loadChildren: () => signInRoutes },
-          { path: 'brak-dostepu', loadChildren: () => noAccessRoutes },
+          { path: 'no-access', loadChildren: () => noAccessRoutes },
         ],
         withComponentInputBinding(),
       ),
@@ -54,7 +54,7 @@ describe('sign-in screen', () => {
 
 describe('no-access screen', () => {
   it('explains that Shelvio is invite-only', async () => {
-    const harness = await open('/brak-dostepu?code=auth.inviteOnly');
+    const harness = await open('/no-access?code=auth.inviteOnly');
 
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe(
       'Shelvio działa na zaproszenia. Poproś właściciela kolekcji o dostęp.',
@@ -62,14 +62,14 @@ describe('no-access screen', () => {
   });
 
   it('explains an unverified Google email', async () => {
-    const harness = await open('/brak-dostepu?code=auth.emailNotVerified');
+    const harness = await open('/no-access?code=auth.emailNotVerified');
 
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe(
       'Google nie potwierdził Twojego adresu e-mail. Potwierdź go i spróbuj ponownie.',
     );
   });
 
-  it.each(['/brak-dostepu', '/brak-dostepu?code=common.forbidden'])(
+  it.each(['/no-access', '/no-access?code=common.forbidden'])(
     'falls back to the invite-only message (%s)',
     async (url) => {
       const harness = await open(url);
@@ -81,7 +81,7 @@ describe('no-access screen', () => {
   );
 
   it('"Wyloguj" goes back to the sign-in screen to try another account', async () => {
-    const harness = await open('/brak-dostepu?code=auth.inviteOnly');
+    const harness = await open('/no-access?code=auth.inviteOnly');
 
     link(harness, 'Wyloguj')?.click();
 

@@ -20,4 +20,4 @@ export type Me = z.infer<typeof Me>;
  * The web app's "Brak dostępu" screen, where the sign-in callback sends a person who was refused
  * (`auth.inviteOnly`, `auth.emailNotVerified`), with the refusal's code as the `code` query param.
  */
-export const NO_ACCESS_PATH = '/brak-dostepu';
+export const NO_ACCESS_PATH = '/no-access';
