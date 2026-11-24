@@ -120,6 +120,29 @@ describe('fake OIDC provider', () => {
     expect(html).toContain('Olek Obcy (outsider@example.test)');
   });
 
+  it('issues later ID tokens with an account profile changed after start, under the same sub', async () => {
+    const fake = await start();
+    const config = relyingParty(fake);
+    const changes = {
+      email: 'ola@example.test',
+      name: 'Ola Nowa',
+      picture: 'https://example.test/avatars/ola.png',
+    };
+
+    fake.updateAccount(owner.sub, changes);
+    const attempt = await beginSignIn(config);
+    const tokens = await exchange(config, await fake.signIn(attempt.url, owner.sub), attempt);
+
+    expect(tokens.claims()).toMatchObject({ sub: owner.sub, ...changes });
+    expect(await (await fetch(attempt.url)).text()).toContain('Ola Nowa (ola@example.test)');
+  });
+
+  it('refuses to update an account it does not know', async () => {
+    const fake = await start();
+
+    expect(() => fake.updateAccount('unknown-sub', { name: 'Nikt' })).toThrow(/unknown-sub/);
+  });
+
   it('signs in an account whose email is not verified, reporting email_verified=false', async () => {
     const fake = await start();
     const config = relyingParty(fake);

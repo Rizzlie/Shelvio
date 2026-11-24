@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { Identity } from '@shelvio/api/identity/domain';
 import {
   ConfigurableModuleClass,
@@ -20,7 +20,8 @@ import { SignInController } from './sign-in.controller';
     {
       provide: Identity,
       inject: [MODULE_OPTIONS_TOKEN],
-      useFactory: (options: IdentityModuleOptions) => new Identity(options),
+      useFactory: (options: IdentityModuleOptions) =>
+        new Identity({ ...options, logger: new Logger(Identity.name) }),
     },
     SessionGuard,
   ],

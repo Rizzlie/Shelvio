@@ -1,7 +1,8 @@
 import { ConfigurableModuleBuilder } from '@nestjs/common';
 import type { IdentityDependencies } from '@shelvio/api/identity/domain';
 
-export interface IdentityModuleOptions extends IdentityDependencies {
+/** Identity's dependencies the app chooses; the module logs through Nest itself. */
+export interface IdentityModuleOptions extends Omit<IdentityDependencies, 'logger'> {
   /** The web app's origin: where the sign-in callback sends people back to. */
   appOrigin: string;
 }
