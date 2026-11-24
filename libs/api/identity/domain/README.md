@@ -9,12 +9,16 @@ Identity owns the `users`, `sessions` and `sign_in_attempts` tables in `@shelvio
 `new Identity({ db, google, signupAllowlist, accountHooks, clock })`:
 
 - `beginSignIn({ returnTo })` → the Google authorisation URL. Stores the attempt (state, PKCE S256 verifier, nonce, `returnTo`) for 10 minutes, single-use. `returnTo` is kept only if it is a path in the web app (one leading `/`, not `//` or `/\`, no control characters), otherwise `/`.
-- `completeSignIn(callbackParams)` → `{ user, returnTo }`. Exchanges the code with `openid-client` (ID token, state, PKCE and nonce verified), then:
+- `completeSignIn(callbackParams)` → `{ user, returnTo, session: { token, expiresAt } }`. Exchanges the code with `openid-client` (ID token, state, PKCE and nonce verified), then:
   - `Forbidden('auth.emailNotVerified')` unless Google verified the email;
   - a known Google account (`sub`) signs in; someone new passes the admission gate (email on `signupAllowlist`, compared lowercased, or `accountHooks.isInvited(email)`), or gets `Forbidden('auth.inviteOnly')` and no account;
-  - `accountHooks.afterSignIn(user)` runs on every successful sign-in.
+  - `accountHooks.afterSignIn(user)` runs on every successful sign-in;
+  - a new session starts, valid for 30 days. Its raw token is returned this once; the `sessions` table keeps only its SHA-256 hash.
 
   A callback that doesn't prove a fresh Google sign-in (unknown, used or expired state, PKCE or nonce mismatch, an error from Google) is `Unauthenticated('auth.unauthenticated')`: start again.
+
+- `resolveSession(token)` → the `Actor` (`{ userId }`) every operation acting for a person receives, or `Unauthenticated('auth.unauthenticated')` for an unknown or expired token.
+- `getMe(actor)` → the signed-in person's `User` (id, email, name, avatar URL).
 
 ## Seams
 

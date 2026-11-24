@@ -1,11 +1,13 @@
-import { type Database, signInAttempts, users } from '@shelvio/api/db';
+import { type Database, sessions, signInAttempts, users } from '@shelvio/api/db';
 import { Forbidden, Unauthenticated } from '@shelvio/api/errors';
-import { and, eq, isNull, lt } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import * as client from 'openid-client';
 import type { AccountHooks } from './account-hooks';
+import type { Actor } from './actor';
 import type { Clock } from './clock';
 import type { GoogleOidc } from './google-oidc';
 import { safeReturnTo } from './return-to';
+import { hashSessionToken, newSessionToken } from './session-token';
 import type { User } from './user';
 
 export interface IdentityDependencies {
@@ -21,10 +23,15 @@ export interface SignedIn {
   user: User;
   /** The validated path in the web app to go back to. */
   returnTo: string;
+  /** The new session. Its raw token exists only here: hand it to the person, never store or log it. */
+  session: { token: string; expiresAt: Date };
 }
 
 /** How long a started sign-in may take to come back from Google. */
 const SIGN_IN_ATTEMPT_TTL_MS = 10 * 60_000;
+
+/** How long a session lasts after sign-in. */
+const SESSION_TTL_MS = 30 * 24 * 60 * 60_000;
 
 /** Fixed parts of every authorization request (spec "Identity module"). */
 const AUTHORIZATION_PARAMS = {
@@ -45,8 +52,11 @@ const SIGN_IN_PROTOCOL_ERRORS = [
   client.ResponseBodyError,
 ];
 
-/** Every way a callback can fail to prove a fresh, genuine Google sign-in: start again. */
-const signInFailed = () => new Unauthenticated('auth.unauthenticated');
+/**
+ * Not signed in: a callback that doesn't prove a fresh, genuine Google sign-in, or a session token
+ * that is unknown, expired or whose user is gone. Either way, the person signs in (again).
+ */
+const unauthenticated = () => new Unauthenticated('auth.unauthenticated');
 
 /** An optional profile claim of the ID token, if Google sent it as a string. */
 const stringClaim = (claims: client.IDToken, name: 'name' | 'picture'): string | null => {
@@ -63,7 +73,8 @@ const toUser = (row: typeof users.$inferSelect): User => ({
 });
 
 /**
- * The Identity module's domain operations: signing in with Google behind the admission gate.
+ * The Identity module's domain operations: signing in with Google behind the admission gate,
+ * sessions, and the signed-in person's profile.
  * HTTP-agnostic; the REST adapter lives in `@shelvio/api/identity/feature`.
  */
 export class Identity {
@@ -114,17 +125,58 @@ export class Identity {
     }
     const user = (await this.findBySub(claims.sub)) ?? (await this.admit(claims, claims.email));
     await this.deps.accountHooks.afterSignIn(user);
-    return { user, returnTo: attempt.returnTo };
+    return { user, returnTo: attempt.returnTo, session: await this.createSession(user) };
+  }
+
+  /** The person a session token belongs to, or `Unauthenticated` for an unknown or expired one. */
+  async resolveSession(token: string): Promise<Actor> {
+    const [session] = await this.deps.db
+      .select({ userId: sessions.userId })
+      .from(sessions)
+      .innerJoin(users, eq(users.id, sessions.userId))
+      .where(
+        and(
+          eq(sessions.tokenHash, hashSessionToken(token)),
+          gt(sessions.expiresAt, this.deps.clock.now()),
+          isNull(users.deletedAt),
+        ),
+      );
+    if (!session) throw unauthenticated();
+    return { userId: session.userId };
+  }
+
+  /** The signed-in person's own profile. */
+  async getMe(actor: Actor): Promise<User> {
+    const [row] = await this.deps.db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, actor.userId), isNull(users.deletedAt)));
+    if (!row) throw unauthenticated();
+    return toUser(row);
+  }
+
+  private async createSession(user: User): Promise<SignedIn['session']> {
+    const now = this.deps.clock.now();
+    const token = newSessionToken();
+    const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+    await this.deps.db.insert(sessions).values({
+      userId: user.id,
+      tokenHash: hashSessionToken(token),
+      createdAt: now,
+      expiresAt,
+      lastRefreshedAt: now,
+    });
+    return { token, expiresAt };
   }
 
   /** Deletes the attempt as it reads it, so a state is honoured at most once. */
   private async consumeAttempt(state: string | null) {
-    if (!state) throw signInFailed();
+    if (!state) throw unauthenticated();
     const [attempt] = await this.deps.db
       .delete(signInAttempts)
       .where(eq(signInAttempts.state, state))
       .returning();
-    if (!attempt || attempt.expiresAt < this.deps.clock.now()) throw signInFailed();
+    if (!attempt || attempt.expiresAt < this.deps.clock.now()) throw unauthenticated();
     return attempt;
   }
 
@@ -150,10 +202,10 @@ export class Identity {
         },
       );
       const claims = tokens.claims();
-      if (!claims) throw signInFailed();
+      if (!claims) throw unauthenticated();
       return claims;
     } catch (error) {
-      if (SIGN_IN_PROTOCOL_ERRORS.some((type) => error instanceof type)) throw signInFailed();
+      if (SIGN_IN_PROTOCOL_ERRORS.some((type) => error instanceof type)) throw unauthenticated();
       // Anything else, such as Google being unreachable, is the API's failure, not the person's.
       throw error;
     }

@@ -1,4 +1,5 @@
-import { users } from '@shelvio/api/db';
+import { createHash, randomBytes } from 'node:crypto';
+import { sessions, users } from '@shelvio/api/db';
 import { useTestDatabase } from '@shelvio/api/db/testing';
 import { Forbidden, Unauthenticated } from '@shelvio/api/errors';
 import {
@@ -33,6 +34,7 @@ const bea = account('bea');
 const cela = account('cela');
 const dora = account('dora');
 const ewa = account('ewa');
+const fela = account('fela');
 const outsider = account('outsider');
 const unverified = account('unverified', { emailVerified: false });
 const invited = account('invited', { email: 'Invited@example.test' });
@@ -43,6 +45,7 @@ const ALLOWLIST = [
   'cela@example.test',
   'dora@example.test',
   'ewa@example.test',
+  'fela@example.test',
   'unverified@example.test',
 ];
 
@@ -58,6 +61,7 @@ class FakeClock implements Clock {
 }
 
 const MINUTE = 60_000;
+const DAY = 24 * 60 * MINUTE;
 
 /** Account hooks that record what Identity told them and invite whom the test says. */
 class RecordingHooks implements AccountHooks {
@@ -89,7 +93,7 @@ describe('signing in with Google', () => {
       clientId,
       clientSecret,
       redirectUri,
-      accounts: [ala, bea, cela, dora, ewa, outsider, unverified, invited],
+      accounts: [ala, bea, cela, dora, ewa, fela, outsider, unverified, invited],
     });
     google = {
       redirectUri,
@@ -306,6 +310,72 @@ describe('signing in with Google', () => {
       await expect(service.completeSignIn(inTime)).resolves.toBeDefined();
       clock.advance(1);
       await rejected(service.completeSignIn(late));
+    });
+  });
+
+  describe('sessions', () => {
+    const unauthenticated = async (attempt: Promise<unknown>) => {
+      await expect(attempt).rejects.toBeInstanceOf(Unauthenticated);
+      await expect(attempt).rejects.toMatchObject({ code: 'auth.unauthenticated' });
+    };
+
+    it('signs the person in: the returned token resolves to them, and getMe shows their profile', async () => {
+      const service = identity();
+      const { user, session } = await signIn(fela, service);
+
+      const actor = await service.resolveSession(session.token);
+
+      expect(actor).toEqual({ userId: user.id });
+      expect(await service.getMe(actor)).toEqual({
+        id: user.id,
+        email: 'fela@example.test',
+        name: fela.name,
+        avatarUrl: fela.picture,
+      });
+    });
+
+    it('last 30 days from sign-in', async () => {
+      const clock = new FakeClock();
+      const service = identity({ clock });
+      const signedInAt = clock.now().getTime();
+      const { user, session } = await signIn(fela, service);
+
+      expect(session.expiresAt).toEqual(new Date(signedInAt + 30 * DAY));
+      clock.advance(30 * DAY - 1);
+      expect(await service.resolveSession(session.token)).toEqual({ userId: user.id });
+      clock.advance(1);
+      await unauthenticated(service.resolveSession(session.token));
+    });
+
+    it('refuse a token no sign-in issued', async () => {
+      await unauthenticated(identity().resolveSession(randomBytes(32).toString('base64url')));
+      await unauthenticated(identity().resolveSession(''));
+    });
+
+    it('are many per person, one per sign-in, each with its own token', async () => {
+      const service = identity();
+      const laptop = await signIn(fela, service);
+      const phone = await signIn(fela, service);
+
+      expect(phone.session.token).not.toBe(laptop.session.token);
+      expect(await service.resolveSession(laptop.session.token)).toEqual({
+        userId: laptop.user.id,
+      });
+      expect(await service.resolveSession(phone.session.token)).toEqual({
+        userId: laptop.user.id,
+      });
+    });
+
+    it('store a hash of the token, never the token itself', async () => {
+      const { user, session } = await signIn(fela);
+
+      const stored = await database.db.select().from(sessions).where(eq(sessions.userId, user.id));
+
+      expect(stored.length).toBeGreaterThan(0);
+      for (const row of stored) expect(Object.values(row)).not.toContain(session.token);
+      expect(stored.map((row) => row.tokenHash)).toContain(
+        createHash('sha256').update(session.token).digest('hex'),
+      );
     });
   });
 });
