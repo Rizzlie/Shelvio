@@ -1,0 +1,9 @@
+{
+  "name": "api-identity-feature",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/api/identity/feature/src",
+  "projectType": "library",
+  "tags": ["scope:api", "type:feature"],
+  "// targets": "to see all targets run: nx show project api-identity-feature --web",
+  "targets": {}
+}

@@ -26,7 +26,9 @@
       "@shelvio/web/shared/theme": ["./libs/web/shared/theme/src/index.ts"],
       "@shelvio/web/shared/ui": ["./libs/web/shared/ui/src/index.ts"],
       "@shelvio/web/shared/formatting": ["./libs/web/shared/formatting/src/index.ts"],
-      "@shelvio/web/shared/formatting/isbn": ["./libs/web/shared/formatting/src/isbn/index.ts"]
+      "@shelvio/web/shared/formatting/isbn": ["./libs/web/shared/formatting/src/isbn/index.ts"],
+      "@shelvio/api/identity/domain": ["./libs/api/identity/domain/src/index.ts"],
+      "@shelvio/api/identity/feature": ["./libs/api/identity/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
