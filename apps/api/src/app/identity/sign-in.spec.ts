@@ -174,7 +174,7 @@ describe('signing in over HTTP', () => {
         const response = await signInAs(who, '/kolekcje');
 
         expect(response.status).toBe(302);
-        expect(response.headers.get('location')).toBe(`${APP_ORIGIN}/brak-dostepu?code=${code}`);
+        expect(response.headers.get('location')).toBe(`${APP_ORIGIN}/no-access?code=${code}`);
         expect(sessionCookies(response)).toEqual([]);
       },
     );

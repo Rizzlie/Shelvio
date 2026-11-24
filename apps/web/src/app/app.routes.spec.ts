@@ -72,7 +72,7 @@ describe('app routes', () => {
   });
 
   it('shows the no-access screen without asking who is signed in', async () => {
-    await harness.navigateByUrl('/brak-dostepu?code=auth.inviteOnly');
+    await harness.navigateByUrl('/no-access?code=auth.inviteOnly');
 
     await vi.waitFor(() => expect(shownText()).toContain('Shelvio działa na zaproszenia.'));
   });
