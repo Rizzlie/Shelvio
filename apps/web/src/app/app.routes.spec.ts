@@ -60,7 +60,7 @@ describe('app routes', () => {
   it('shows a signed-out person the sign-in screen', async () => {
     await open('/', null);
 
-    expect(TestBed.inject(Router).url).toBe('/logowanie');
+    expect(TestBed.inject(Router).url).toBe('/login');
     await vi.waitFor(() => expect(shownText()).toContain('Zaloguj przez Google'));
   });
 

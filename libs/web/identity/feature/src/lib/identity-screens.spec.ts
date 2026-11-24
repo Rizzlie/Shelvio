@@ -9,7 +9,7 @@ async function open(url: string) {
     providers: [
       provideRouter(
         [
-          { path: 'logowanie', loadChildren: () => signInRoutes },
+          { path: 'login', loadChildren: () => signInRoutes },
           { path: 'brak-dostepu', loadChildren: () => noAccessRoutes },
         ],
         withComponentInputBinding(),
@@ -35,7 +35,7 @@ const link = (harness: RouterTestingHarness, name: string) =>
 
 describe('sign-in screen', () => {
   it('offers signing in with Google, coming back to the page the person asked for', async () => {
-    const harness = await open('/logowanie?returnTo=%2Fkolekcje%2F123');
+    const harness = await open('/login?returnTo=%2Fkolekcje%2F123');
 
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent?.trim()).toBe('Shelvio');
     expect(link(harness, 'Zaloguj przez Google')?.getAttribute('href')).toBe(
@@ -44,7 +44,7 @@ describe('sign-in screen', () => {
   });
 
   it('comes back to the start page when no page was asked for', async () => {
-    const harness = await open('/logowanie');
+    const harness = await open('/login');
 
     expect(link(harness, 'Zaloguj przez Google')?.getAttribute('href')).toBe(
       '/api/auth/google?returnTo=%2F',
@@ -85,6 +85,6 @@ describe('no-access screen', () => {
 
     link(harness, 'Wyloguj')?.click();
 
-    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/logowanie'));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/login'));
   });
 });
