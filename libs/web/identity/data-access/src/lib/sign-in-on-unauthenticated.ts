@@ -1,14 +1,9 @@
-import {
-  HttpErrorResponse,
-  HttpHandlerFn,
-  HttpInterceptorFn,
-  HttpRequest,
-} from '@angular/common/http';
+import { HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs';
-import { CurrentUserStore, SIGNED_OUT_IS_AN_ANSWER } from './current-user-store';
-import { signInPage } from './sign-in-page';
+import { CurrentUserStore, isUnauthenticated, SIGNED_OUT_IS_AN_ANSWER } from './current-user-store';
+import { signInRedirect } from './sign-in-redirect';
 
 /** The address the person is on, or the one they are opening if a navigation is under way. */
 function currentAddress(router: Router): string {
@@ -32,10 +27,10 @@ export const signInOnUnauthenticated: HttpInterceptorFn = (
   return next(request).pipe(
     tap({
       error: (error: unknown) => {
-        if (!(error instanceof HttpErrorResponse && error.status === 401)) return;
+        if (!isUnauthenticated(error)) return;
         const returnTo = currentAddress(router);
         currentUser.forget();
-        void router.navigateByUrl(signInPage(router, returnTo));
+        void router.navigateByUrl(signInRedirect(router, returnTo));
       },
     }),
   );

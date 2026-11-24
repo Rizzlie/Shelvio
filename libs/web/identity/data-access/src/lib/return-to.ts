@@ -4,7 +4,7 @@ import { NO_ACCESS_PATH } from '@shelvio/shared/contracts';
 export const SIGN_IN_PATH = '/logowanie';
 
 /** Where a sign-in lands when the requested page can't or shouldn't be returned to. */
-const START_PAGE = '/';
+export const START_PAGE = '/';
 
 /** Starts with one `/` that isn't followed by another `/` or a `\` (another site in browsers). */
 const APP_PATH = /^\/(?![/\\])/;

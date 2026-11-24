@@ -7,7 +7,8 @@ import { catchError, firstValueFrom, map, of, throwError } from 'rxjs';
 /** Set on a request whose caller handles a 401 itself, so `signInOnUnauthenticated` skips it. */
 export const SIGNED_OUT_IS_AN_ANSWER = new HttpContextToken(() => false);
 
-const isUnauthenticated = (error: unknown) =>
+/** The API's answer when no one is signed in, or the session ended. */
+export const isUnauthenticated = (error: unknown) =>
   error instanceof HttpErrorResponse && error.status === 401;
 
 /**
