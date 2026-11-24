@@ -31,5 +31,6 @@ export const identityModule = IdentityModule.forRootAsync({
     signupAllowlist: config.SIGNUP_ALLOWLIST,
     accountHooks: noAccountHooks,
     clock: systemClock,
+    appOrigin: config.APP_ORIGIN,
   }),
 });
