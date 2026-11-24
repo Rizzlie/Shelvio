@@ -6,11 +6,15 @@ import type { ErrorCode } from '@shelvio/shared/contracts';
 import { SIGN_IN_PATH } from '@shelvio/web/identity/data-access';
 import { errorMessageKeys } from '@shelvio/web/shared/i18n';
 
-/** Why the API refused a sign-in, as the shared-scope message for each refusal code. */
-const refusalMessages: Partial<Record<string, string>> = {
-  'auth.inviteOnly': errorMessageKeys['auth.inviteOnly'],
-  'auth.emailNotVerified': errorMessageKeys['auth.emailNotVerified'],
-} satisfies Partial<Record<ErrorCode, string>>;
+/** The codes the API's sign-in callback sends here; any other code shows the invite-only message. */
+const refusals = [
+  'auth.inviteOnly',
+  'auth.emailNotVerified',
+] as const satisfies readonly ErrorCode[];
+type Refusal = (typeof refusals)[number];
+
+const isRefusal = (code: string | undefined): code is Refusal =>
+  refusals.some((refusal) => refusal === code);
 
 /**
  * "Brak dostępu": why a sign-in was refused, and "Wyloguj" back to the sign-in screen to pick
@@ -33,8 +37,9 @@ export class NoAccessPage {
   /** The refusal's error code, from the `code` query param. */
   readonly code = input<string>();
 
-  protected readonly message = computed(
-    () => refusalMessages[this.code() ?? ''] ?? refusalMessages['auth.inviteOnly'],
-  );
+  protected readonly message = computed(() => {
+    const code = this.code();
+    return errorMessageKeys[isRefusal(code) ? code : 'auth.inviteOnly'];
+  });
   protected readonly signInPath = SIGN_IN_PATH;
 }

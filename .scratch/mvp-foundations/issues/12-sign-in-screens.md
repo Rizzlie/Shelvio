@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 (Translations and the 404 screen), 10 (First sign-in (backend)).
 
-**Status:** done
+**Status:** ready-for-human
 
 - [x] On bootstrap the app calls `GET /me`; 401 shows the public sign-in screen with the current URL carried as `returnTo`.
 - [x] Sign-in screen: a centered card with the Shelvio wordmark, one tagline and "Zaloguj przez Google", which starts the API's sign-in route with `returnTo`. (The "O aplikacji" link is added by ticket 19.)
